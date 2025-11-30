@@ -3287,14 +3287,14 @@ def show_dashboard(logger, dry_run):
             with real-time monitoring, comprehensive logging, and professional reporting capabilities.
         </p>
         <p style='color: #00ff7f; font-size: 1rem; margin-top: 25px;'>
-            📌 <strong>Select any module below to begin your authorized security assessment</strong>
+            📌 <strong>Select any module below or use the sidebar to begin your authorized security assessment</strong>
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Feature Grid with clickable cards
+    # Feature Grid - clickable cards with details
     st.markdown("### 🎯 Available Security Modules")
     st.markdown("*Click on any module card to start testing*")
     st.markdown("<br>", unsafe_allow_html=True)
@@ -3302,17 +3302,21 @@ def show_dashboard(logger, dry_run):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("🔍 Port Scanner", key="btn_port_card", use_container_width=True, help="Click to open Port Scanner module"):
+        # Make the entire card clickable
+        if st.button("🔍 Port Scanner\n\nCapabilities:\n• Multi-threaded TCP port scanning\n• Service detection & banner grabbing\n• Export results to JSON/HTML\n• Identify open ports & running services", 
+                     key="card_port", use_container_width=True, help="Click to open Port Scanner"):
             st.session_state.selected_module = "🔍 Port Scanner"
             st.rerun()
     
     with col2:
-        if st.button("🔑 Password Testing", key="btn_pass_card", use_container_width=True, help="Click to open Password Assessment module"):
+        if st.button("🔑 Password Testing\n\nCapabilities:\n• Password strength analysis\n• Policy compliance checking\n• Entropy calculation (Shannon)\n• Hash simulation (MD5/SHA256/bcrypt)",
+                     key="card_pass", use_container_width=True, help="Click to open Password Assessment"):
             st.session_state.selected_module = "🔑 Password Assessment"
             st.rerun()
     
     with col3:
-        if st.button("💥 Stress Testing", key="btn_dos_card", use_container_width=True, help="Click to open DOS/Stress Test module"):
+        if st.button("💥 Stress Testing\n\nCapabilities:\n• Controlled DOS simulation\n• HTTP flood testing (max 200 clients)\n• Real-time latency monitoring\n• Performance graphs & reports",
+                     key="card_stress", use_container_width=True, help="Click to open Stress Test"):
             st.session_state.selected_module = "💥 DOS/Stress Test"
             st.rerun()
     
@@ -3321,17 +3325,20 @@ def show_dashboard(logger, dry_run):
     col4, col5, col6 = st.columns(3)
     
     with col4:
-        if st.button("🌐 Web Discovery", key="btn_web_card", use_container_width=True, help="Click to open Web Discovery module"):
+        if st.button("🌐 Web Discovery\n\nCapabilities:\n• Directory enumeration (DIRB-style)\n• Subdomain discovery\n• API endpoint detection\n• Hidden resource identification",
+                     key="card_web", use_container_width=True, help="Click to open Web Discovery"):
             st.session_state.selected_module = "🌐 Web Discovery"
             st.rerun()
     
     with col5:
-        if st.button("📦 Packet Capture", key="btn_packet_card", use_container_width=True, help="Click to open Packet Capture module"):
+        if st.button("📦 Packet Capture\n\nCapabilities:\n• Real-time traffic capture\n• Protocol analysis (HTTP/DNS/TCP)\n• Save .pcap files\n• Network traffic visualization",
+                     key="card_packet", use_container_width=True, help="Click to open Packet Capture"):
             st.session_state.selected_module = "📦 Packet Capture"
             st.rerun()
     
     with col6:
-        if st.button("📊 Reports & Logs", key="btn_logs_card", use_container_width=True, help="Click to open Reports & Logs module"):
+        if st.button("📊 Reports & Logs\n\nCapabilities:\n• View all security logs\n• SHA-256 integrity verification\n• Export PDF/Word/JSON reports\n• Comprehensive findings summary",
+                     key="card_logs", use_container_width=True, help="Click to open Reports & Logs"):
             st.session_state.selected_module = "📊 Logs & Reports"
             st.rerun()
     
@@ -3372,29 +3379,6 @@ def show_dashboard(logger, dry_run):
         """)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Module Status Overview
-    st.markdown("### 📊 Module Status Overview")
-    
-    status_col1, status_col2, status_col3, status_col4, status_col5, status_col6 = st.columns(6)
-    
-    with status_col1:
-        st.metric("Port Scanner", "✅ Ready", delta="Active")
-    
-    with status_col2:
-        st.metric("Password Test", "✅ Ready", delta="Active")
-    
-    with status_col3:
-        st.metric("Stress Test", "✅ Ready", delta="Active")
-    
-    with status_col4:
-        st.metric("Web Discovery", "✅ Ready", delta="Active")
-    
-    with status_col5:
-        st.metric("Packet Capture", "✅ Ready", delta="Active")
-    
-    with status_col6:
-        st.metric("Reports", "✅ Ready", delta="Active")
     
     # Quick Start Guide with more details
     with st.expander("📖 Quick Start Guide - How to Use This Toolkit"):
