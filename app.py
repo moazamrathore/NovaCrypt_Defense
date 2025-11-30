@@ -979,48 +979,27 @@ def show_password_assessment(logger, dry_run):
             ✅ Completely safe
             """)
         
-        # Quick test buttons
-        st.markdown("#### 🧪 Quick Test Examples")
-        
-        col_ex1, col_ex2, col_ex3, col_ex4 = st.columns(4)
-        
-        with col_ex1:
-            if st.button("Test: Weak", use_container_width=True):
-                st.session_state.test_password = "password123"
-                st.rerun()
-        
-        with col_ex2:
-            if st.button("Test: Moderate", use_container_width=True):
-                st.session_state.test_password = "Pass1234!"
-                st.rerun()
-        
-        with col_ex3:
-            if st.button("Test: Strong", use_container_width=True):
-                st.session_state.test_password = "MyP@ssw0rd2024!"
-                st.rerun()
-        
-        with col_ex4:
-            if st.button("Test: Very Strong", use_container_width=True):
-                st.session_state.test_password = "C0ff33-M0unt@in-Sky!42"
-                st.rerun()
-        
-        # Use test password if available
-        if 'test_password' in st.session_state:
-            password_input = st.session_state.test_password
-            del st.session_state.test_password  # Clear after use
-        
         # Analyze button
         st.markdown("---")
         
-        if st.button("🔍 Analyze Password", type="primary", use_container_width=True, disabled=not password_input):
-            if password_input:
-                # Perform assessment
-                results = password_tester.assess_password(password_input)
-                
-                # Store in session state
-                st.session_state.password_results = results
-                
-                st.success("✅ Analysis complete!")
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("🔍 Analyze Password", type="primary", use_container_width=True, disabled=not password_input):
+                if password_input:
+                    # Perform assessment
+                    results = password_tester.assess_password(password_input)
+                    
+                    # Store in session state
+                    st.session_state.password_results = results
+                    
+                    st.success("✅ Analysis complete!")
+        
+        with col_btn2:
+            if st.button("🔄 Clear Results", use_container_width=True):
+                if 'password_results' in st.session_state:
+                    del st.session_state.password_results
+                    st.rerun()
         
         # Display results
         if 'password_results' in st.session_state:
@@ -1923,39 +1902,6 @@ def show_dashboard(logger, dry_run):
     
     if dry_run:
         st.warning("🧪 **Dry Run Mode Active** - Simulations only, no actual attacks will be performed")
-    
-    # Additional Context Section
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### 🎓 Academic Context")
-    
-    info_col1, info_col2, info_col3 = st.columns(3)
-    
-    with info_col1:
-        st.info("""
-        **📚 Course Information**
-        
-        - **Course:** CY4053 - Cybersecurity for FinTech
-        - **Semester:** Fall 2025
-        - **Institution:** BSFT 7th Semester
-        - **Project Type:** Final Group Project
-        """)
-    
-    with info_col2:
-        st.success("""
-        **👥 Team: NovaCrypt Defense**
-        
-        - Moazam (BSFT07-9953)
-        - Abdullah (BSFT07-7465)
-        
-        **Deadline:** November 30, 2025
-        """)
-    
-    with info_col3:
-        st.warning("""
-        **🎯 Project Scenario**
-        
-        Security testing toolkit for **PayBuddy** - a fictional FinTech startup processing online payments and micro-transactions.
-        """)
 
 # ============================================================================
 # LOGS & REPORTS VIEW
