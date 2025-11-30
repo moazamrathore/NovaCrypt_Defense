@@ -3275,31 +3275,33 @@ def show_dashboard(logger, dry_run):
     
     # Welcome message with more details
     st.markdown("""
-    <div style='background: rgba(0, 255, 245, 0.1); padding: 25px; border-radius: 10px; border: 1px solid #00fff5;'>
-        <h3 style='color: #00fff5; margin-top: 0;'>⚡ Welcome to NovaCrypt Defense</h3>
-        <p style='color: #fff; font-size: 1.1rem; line-height: 1.6;'>
-            A comprehensive Python-based security toolkit designed for PayBuddy FinTech security testing.
-            This suite provides <strong>6 powerful modules</strong> for authorized penetration testing and vulnerability assessment.
+    <div style='background: rgba(0, 255, 245, 0.1); padding: 30px; border-radius: 15px; border: 2px solid #00fff5; margin-bottom: 30px; text-align: center;'>
+        <h2 style='color: #00fff5; margin-top: 0; font-size: 2.5rem;'>⚡ Welcome to NovaCrypt Defense</h2>
+        <p style='color: #fff; font-size: 1.2rem; line-height: 1.8; margin: 20px 0;'>
+            NovaCrypt Defense is a comprehensive Python-based security toolkit designed for <strong>PayBuddy FinTech</strong> security testing. 
+            This professional suite provides <strong style='color: #00fff5;'>6 powerful modules</strong> for authorized penetration testing, 
+            vulnerability assessment, and security analysis.
         </p>
-        <p style='color: #00bfff; margin-bottom: 0;'>
-            📌 <strong>Select any module below or use the sidebar</strong> to begin your security assessment.
+        <p style='color: #00bfff; font-size: 1.1rem; margin: 20px 0;'>
+            Built entirely in Python, our toolkit delivers enterprise-grade security testing 
+            with real-time monitoring, comprehensive logging, and professional reporting capabilities.
+        </p>
+        <p style='color: #00ff7f; font-size: 1rem; margin-top: 25px;'>
+            📌 <strong>Select any module from the sidebar to begin your authorized security assessment</strong>
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Feature Grid with clickable cards
+    # Feature Grid 
     st.markdown("### 🎯 Available Security Modules")
-    st.markdown("*Click on any module card to start testing*")
+    st.markdown("*Use the sidebar to select a module*")
     st.markdown("<br>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("🔍 Port Scanner", key="btn_port", use_container_width=True):
-            st.session_state.selected_module = "🔍 Port Scanner"
-            st.rerun()
         st.markdown("""
         <div style='background: rgba(0, 191, 255, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00bfff; min-height: 180px;'>
             <h4 style='color: #00bfff;'>🔍 Port Scanner</h4>
@@ -3314,9 +3316,6 @@ def show_dashboard(logger, dry_run):
         """, unsafe_allow_html=True)
     
     with col2:
-        if st.button("🔑 Password Testing", key="btn_pass", use_container_width=True):
-            st.session_state.selected_module = "🔑 Password Assessment"
-            st.rerun()
         st.markdown("""
         <div style='background: rgba(0, 255, 127, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00ff7f; min-height: 180px;'>
             <h4 style='color: #00ff7f;'>🔑 Password Testing</h4>
@@ -3331,9 +3330,6 @@ def show_dashboard(logger, dry_run):
         """, unsafe_allow_html=True)
     
     with col3:
-        if st.button("💥 Stress Testing", key="btn_dos", use_container_width=True):
-            st.session_state.selected_module = "💥 DOS/Stress Test"
-            st.rerun()
         st.markdown("""
         <div style='background: rgba(255, 165, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ffa500; min-height: 180px;'>
             <h4 style='color: #ffa500;'>💥 Stress Testing</h4>
@@ -3352,9 +3348,6 @@ def show_dashboard(logger, dry_run):
     col4, col5, col6 = st.columns(3)
     
     with col4:
-        if st.button("🌐 Web Discovery", key="btn_web", use_container_width=True):
-            st.session_state.selected_module = "🌐 Web Discovery"
-            st.rerun()
         st.markdown("""
         <div style='background: rgba(138, 43, 226, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #8a2be2; min-height: 180px;'>
             <h4 style='color: #8a2be2;'>🌐 Web Discovery</h4>
@@ -3369,9 +3362,6 @@ def show_dashboard(logger, dry_run):
         """, unsafe_allow_html=True)
     
     with col5:
-        if st.button("📦 Packet Capture", key="btn_packet", use_container_width=True):
-            st.session_state.selected_module = "📦 Packet Capture"
-            st.rerun()
         st.markdown("""
         <div style='background: rgba(255, 20, 147, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff1493; min-height: 180px;'>
             <h4 style='color: #ff1493;'>📦 Packet Capture</h4>
@@ -3386,9 +3376,6 @@ def show_dashboard(logger, dry_run):
         """, unsafe_allow_html=True)
     
     with col6:
-        if st.button("📊 Reports & Logs", key="btn_logs", use_container_width=True):
-            st.session_state.selected_module = "📊 Logs & Reports"
-            st.rerun()
         st.markdown("""
         <div style='background: rgba(255, 69, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff4500; min-height: 180px;'>
             <h4 style='color: #ff4500;'>📊 Reports & Logs</h4>
@@ -3433,35 +3420,10 @@ def show_dashboard(logger, dry_run):
         - 📊 **Auto Reports:** PDF/Word/JSON exports with findings
         - 💾 **Persistent Storage:** All logs saved to `evidence/` directory
         - 🔍 **Audit Ready:** Logs formatted for security audits
-        
-        **📌 File Naming Convention:**
-        All outputs include registration numbers (e.g., `scan_9953_Moazam.json`)
+
         """)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Module Status Overview
-    st.markdown("### 📊 Module Status Overview")
-    
-    status_col1, status_col2, status_col3, status_col4, status_col5, status_col6 = st.columns(6)
-    
-    with status_col1:
-        st.metric("Port Scanner", "✅ Ready", delta="Active")
-    
-    with status_col2:
-        st.metric("Password Test", "✅ Ready", delta="Active")
-    
-    with status_col3:
-        st.metric("Stress Test", "✅ Ready", delta="Active")
-    
-    with status_col4:
-        st.metric("Web Discovery", "✅ Ready", delta="Active")
-    
-    with status_col5:
-        st.metric("Packet Capture", "✅ Ready", delta="Active")
-    
-    with status_col6:
-        st.metric("Reports", "✅ Ready", delta="Active")
     
     # Quick Start Guide with more details
     with st.expander("📖 Quick Start Guide - How to Use This Toolkit"):
@@ -3474,9 +3436,7 @@ def show_dashboard(logger, dry_run):
         - If files are missing, they'll be created automatically with team information
         
         #### **Step 2: Select Your Module** 🎯
-        You can select a module in **two ways**:
-        - **Option A:** Click any module card on the dashboard (above)
-        - **Option B:** Use the dropdown in the sidebar under "Select Module"
+        You can select a module using the dropdown in the sidebar under "Select Module"
         
         #### **Step 3: Configure Testing Parameters** ⚙️
         Each module has specific configuration options:
