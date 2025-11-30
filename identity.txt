@@ -1,0 +1,4 @@
+Team: NovaCrypt Defense
+Members:
+- Moazam | BSFT07-9953
+- Abdullah | BSFT07-7465

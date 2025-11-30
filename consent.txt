@@ -1,0 +1,12 @@
+Approved Targets:
+- localhost / 127.0.0.1
+- http://testphp.vulnweb.com (Acunetix test site)
+- scanme.nmap.org
+- example.com
+- Local Flask/FastAPI mock servers
+- OWASP Juice Shop (local instance)
+- TryHackMe lab environments
+- Any real-world URL (with ethical testing only)
+
+Approved By: Moazam & Abdullah
+Date: 30-November-2025
