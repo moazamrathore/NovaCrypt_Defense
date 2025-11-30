@@ -1785,14 +1785,6 @@ def main():
             st.info("🔔 Dry run enabled - No actual attacks will be performed")
         
         st.markdown("---")
-        
-        # Footer
-        st.markdown("""
-        <div style='text-align: center; padding: 10px; color: #666;'>
-            <small>CY4053 Final Project</small><br>
-            <small>Fall 2025</small>
-        </div>
-        """, unsafe_allow_html=True)
     
     # ========================================================================
     # MAIN CONTENT AREA
@@ -3691,10 +3683,6 @@ def show_dashboard(logger, dry_run):
             This professional suite provides <strong style='color: #00fff5;'>6 powerful modules</strong> for authorized penetration testing, 
             vulnerability assessment, and security analysis.
         </p>
-        <p style='color: #00bfff; font-size: 1.1rem; margin: 20px 0;'>
-            Built entirely in Python without external Kali tools, our toolkit delivers enterprise-grade security testing 
-            with real-time monitoring, comprehensive logging, and professional reporting capabilities.
-        </p>
         <p style='color: #00ff7f; font-size: 1rem; margin-top: 25px;'>
             📌 <strong>Select any module from the sidebar to begin your authorized security assessment</strong>
         </p>
@@ -4101,4 +4089,5 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
 
