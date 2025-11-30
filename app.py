@@ -15,6 +15,8 @@ import requests
 from collections import defaultdict
 from urllib.parse import urljoin, urlparse
 import random
+import matplotlib.pyplot as plt
+from io import BytesIO
 
 # ============================================================================
 # PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
@@ -513,6 +515,68 @@ class WebDiscovery:
             json.dump(results, indent=2, fp=f)
         self.logger.log("WEB_DISCOVERY", "Export", f"Results saved to {filepath}")
         return filepath
+
+# ============================================================================
+# GRAPH GENERATION FOR STRESS TEST
+# ============================================================================
+def generate_performance_graphs(results):
+    """Generate performance graphs for stress test results"""
+    
+    # Create figure with 2 subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    fig.patch.set_facecolor('#1a1a2e')
+    
+    # Graph 1: Success vs Errors Pie Chart
+    ax1.set_facecolor('#16213e')
+    labels = ['Successful', 'Failed']
+    sizes = [results['successful_requests'], results['failed_requests']]
+    colors = ['#00ff7f', '#ff4500']
+    explode = (0.1, 0)
+    
+    ax1.pie(sizes, explode=explode, labels=labels, colors=colors,
+            autopct='%1.1f%%', shadow=True, startangle=90,
+            textprops={'color': 'white', 'fontsize': 12})
+    ax1.set_title('Request Success Rate', color='#00fff5', fontsize=14, fontweight='bold')
+    
+    # Graph 2: Latency Distribution Bar Chart
+    ax2.set_facecolor('#16213e')
+    latency = results['latency_stats']
+    metrics = ['Avg', 'Min', 'Max', 'P50', 'P95', 'P99']
+    values = [
+        latency['average_ms'],
+        latency['min_ms'],
+        latency['max_ms'],
+        latency['p50_ms'],
+        latency['p95_ms'],
+        latency['p99_ms']
+    ]
+    
+    bars = ax2.bar(metrics, values, color='#00bfff', edgecolor='#00fff5', linewidth=2)
+    ax2.set_xlabel('Latency Metrics', color='white', fontsize=12)
+    ax2.set_ylabel('Latency (ms)', color='white', fontsize=12)
+    ax2.set_title('Response Time Distribution', color='#00fff5', fontsize=14, fontweight='bold')
+    ax2.tick_params(colors='white')
+    ax2.spines['bottom'].set_color('white')
+    ax2.spines['left'].set_color('white')
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+    
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width()/2., height,
+                f'{height:.1f}ms',
+                ha='center', va='bottom', color='white', fontsize=10)
+    
+    plt.tight_layout()
+    
+    # Save to BytesIO
+    buf = BytesIO()
+    plt.savefig(buf, format='png', facecolor='#1a1a2e', dpi=100)
+    buf.seek(0)
+    plt.close()
+    
+    return buf    
 
 # ============================================================================
 # DOS/STRESS TESTING MODULE
@@ -2474,8 +2538,31 @@ def show_stress_test(logger, dry_run):
             success_rate = results['success_rate_percent']
             color = "🟢" if success_rate >= 95 else "🟡" if success_rate >= 80 else "🔴"
             st.metric("Success Rate", f"{success_rate}%", delta=color)
+
+        # Generate and display performance graphs
+        st.markdown("### 📊 Performance Visualization")
+        
+        try:
+            graph_buf = generate_performance_graphs(results)
+            st.image(graph_buf, use_container_width=True)
+            
+            # Download graph button
+            st.download_button(
+                label="📥 Download Performance Graph",
+                data=graph_buf,
+                file_name=f"stress_test_graph_{results['target'].replace('://', '_')}_9953_Moazam.png",
+                mime="image/png",
+                key="download_graph"
+            )
+        except Exception as e:
+            st.warning(f"⚠️ Could not generate graphs: {str(e)}")
+        
+        
         
         st.markdown("---")
+        
+        # Performance metrics
+        col_p1, col_p2 = st.columns(2)
         
         # Performance metrics
         col_p1, col_p2 = st.columns(2)
@@ -3631,4 +3718,5 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
 
