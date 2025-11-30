@@ -14,6 +14,7 @@ import bcrypt
 import requests
 from collections import defaultdict
 from urllib.parse import urljoin, urlparse
+import random
 
 # ============================================================================
 # PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
@@ -137,6 +138,193 @@ def load_custom_css():
     }
     </style>
     """, unsafe_allow_html=True)
+
+# ============================================================================
+# PACKET CAPTURE & ANALYSIS MODULE
+# ============================================================================
+class PacketCapture:
+    def __init__(self, logger):
+        self.logger = logger
+        self.packets = []
+        self.capture_active = False
+        
+    def generate_sample_packet(self, protocol="HTTP"):
+        """Generate simulated network packet"""
+        protocols = ["HTTP", "HTTPS", "DNS", "TCP", "UDP", "ICMP"]
+        
+        if protocol == "Random":
+            protocol = random.choice(protocols)
+        
+        src_ip = f"{random.randint(192, 192)}.{random.randint(168, 168)}.{random.randint(1, 1)}.{random.randint(1, 254)}"
+        dst_ip = f"{random.randint(1, 223)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
+        
+        packet = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+            "protocol": protocol,
+            "src_ip": src_ip,
+            "dst_ip": dst_ip,
+            "src_port": random.randint(1024, 65535),
+            "dst_port": self.get_common_port(protocol),
+            "length": random.randint(60, 1500),
+            "info": self.get_packet_info(protocol)
+        }
+        
+        return packet
+    
+    def get_common_port(self, protocol):
+        """Get common destination port for protocol"""
+        ports = {
+            "HTTP": 80,
+            "HTTPS": 443,
+            "DNS": 53,
+            "TCP": random.choice([22, 80, 443, 3306, 5432]),
+            "UDP": random.choice([53, 123, 161]),
+            "ICMP": 0
+        }
+        return ports.get(protocol, random.randint(1, 65535))
+    
+    def get_packet_info(self, protocol):
+        """Generate realistic packet info"""
+        info_templates = {
+            "HTTP": [
+                "GET / HTTP/1.1",
+                "POST /api/login HTTP/1.1",
+                "GET /images/logo.png HTTP/1.1",
+                "HTTP/1.1 200 OK"
+            ],
+            "HTTPS": [
+                "Client Hello",
+                "Server Hello",
+                "Certificate",
+                "Application Data"
+            ],
+            "DNS": [
+                "Standard query A example.com",
+                "Standard query response A 93.184.216.34",
+                "Standard query AAAA google.com",
+                "Standard query PTR 1.1.168.192.in-addr.arpa"
+            ],
+            "TCP": [
+                "SYN",
+                "SYN, ACK",
+                "ACK",
+                "PSH, ACK",
+                "FIN, ACK"
+            ],
+            "UDP": [
+                "UDP payload",
+                "DNS query",
+                "NTP request"
+            ],
+            "ICMP": [
+                "Echo (ping) request",
+                "Echo (ping) reply",
+                "Destination unreachable"
+            ]
+        }
+        
+        return random.choice(info_templates.get(protocol, ["Unknown"]))
+    
+    def capture_traffic(self, duration=10, protocol_filter="All"):
+        """Simulate traffic capture"""
+        self.packets = []
+        self.capture_active = True
+        
+        self.logger.log("PACKET_CAPTURE", "Started", f"Duration: {duration}s, Filter: {protocol_filter}")
+        
+        start_time = time.time()
+        packet_count = 0
+        
+        while time.time() - start_time < duration and self.capture_active:
+            # Generate 5-15 packets per second
+            packets_per_batch = random.randint(5, 15)
+            
+            for _ in range(packets_per_batch):
+                if protocol_filter == "All":
+                    packet = self.generate_sample_packet("Random")
+                else:
+                    packet = self.generate_sample_packet(protocol_filter)
+                
+                self.packets.append(packet)
+                packet_count += 1
+            
+            time.sleep(1)
+        
+        self.capture_active = False
+        
+        self.logger.log("PACKET_CAPTURE", "Completed", f"Captured {packet_count} packets")
+        
+        return self.analyze_traffic()
+    
+    def analyze_traffic(self):
+        """Analyze captured packets"""
+        if not self.packets:
+            return None
+        
+        # Protocol distribution
+        protocol_count = defaultdict(int)
+        for packet in self.packets:
+            protocol_count[packet['protocol']] += 1
+        
+        # Top talkers (IPs)
+        ip_traffic = defaultdict(int)
+        for packet in self.packets:
+            ip_traffic[packet['src_ip']] += 1
+            ip_traffic[packet['dst_ip']] += 1
+        
+        top_ips = sorted(ip_traffic.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        # Port usage
+        port_count = defaultdict(int)
+        for packet in self.packets:
+            port_count[packet['dst_port']] += 1
+        
+        top_ports = sorted(port_count.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        # Traffic volume
+        total_bytes = sum(packet['length'] for packet in self.packets)
+        
+        analysis = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_packets": len(self.packets),
+            "total_bytes": total_bytes,
+            "protocol_distribution": dict(protocol_count),
+            "top_ips": [{"ip": ip, "packets": count} for ip, count in top_ips],
+            "top_ports": [{"port": port, "packets": count} for port, count in top_ports],
+            "packets": self.packets[-100:]  # Last 100 packets
+        }
+        
+        return analysis
+    
+    def export_pcap(self, filename):
+        """Simulate .pcap export"""
+        filepath = f"evidence/{filename}"
+        
+        # Create a text representation (real .pcap would need scapy)
+        with open(filepath, 'w') as f:
+            f.write("# Simulated PCAP Export\n")
+            f.write(f"# Captured: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"# Total Packets: {len(self.packets)}\n\n")
+            
+            for i, packet in enumerate(self.packets, 1):
+                f.write(f"Packet {i}:\n")
+                f.write(f"  Time: {packet['timestamp']}\n")
+                f.write(f"  Protocol: {packet['protocol']}\n")
+                f.write(f"  Source: {packet['src_ip']}:{packet['src_port']}\n")
+                f.write(f"  Destination: {packet['dst_ip']}:{packet['dst_port']}\n")
+                f.write(f"  Length: {packet['length']} bytes\n")
+                f.write(f"  Info: {packet['info']}\n\n")
+        
+        self.logger.log("PACKET_CAPTURE", "Export", f"PCAP saved to {filepath}")
+        return filepath
+    
+    def export_json(self, analysis, filename):
+        """Export analysis to JSON"""
+        filepath = f"evidence/{filename}"
+        with open(filepath, 'w') as f:
+            json.dump(analysis, indent=2, fp=f)
+        self.logger.log("PACKET_CAPTURE", "Export", f"Analysis saved to {filepath}")
+        return filepath
 
 # ============================================================================
 # WEB DISCOVERY MODULE (DIRB-style)
@@ -1264,11 +1452,304 @@ def main():
         show_web_discovery(logger, dry_run)
     
     elif module == "📦 Packet Capture":
-        st.info("🚧 **Packet Capture Module** - Coming in Phase 3!")
-        st.markdown("This module will capture and analyze network traffic.")
+        show_packet_capture(logger, dry_run)
     
     elif module == "📊 Logs & Reports":
         show_logs_reports(logger)
+
+# ============================================================================
+# PACKET CAPTURE VIEW
+# ============================================================================
+def show_packet_capture(logger, dry_run):
+    st.markdown("## 📦 Packet Capture & Analysis Module")
+    
+    logger.log("PACKET_CAPTURE", "Module Accessed", "User opened packet capture")
+    
+    st.markdown("""
+    <div style='background: rgba(255, 20, 147, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff1493; margin-bottom: 20px;'>
+        <h4 style='color: #ff1493; margin-top: 0;'>📡 Network Traffic Capture & Protocol Analysis</h4>
+        <p style='color: #fff;'>
+            Capture and analyze network traffic in real-time. Monitor protocols, identify patterns,
+            and export packet data for forensic analysis.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("""
+    **📌 Note:** This is a simulated packet capture for demonstration purposes.
+    
+    In production environments:
+    - Use **Scapy** or **pyshark** for real packet capture
+    - Requires **root/admin privileges**
+    - Works on actual network interfaces (eth0, wlan0, etc.)
+    - Captures real network traffic
+    
+    This simulation demonstrates the interface and analysis capabilities.
+    """)
+    
+    st.markdown("---")
+    
+    # Configuration
+    st.markdown("### ⚙️ Capture Configuration")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        capture_duration = st.slider(
+            "⏱️ Capture Duration (seconds)",
+            min_value=5,
+            max_value=60,
+            value=10,
+            help="How long to capture traffic"
+        )
+        
+        protocol_filter = st.selectbox(
+            "🔍 Protocol Filter",
+            ["All", "HTTP", "HTTPS", "DNS", "TCP", "UDP", "ICMP"],
+            help="Filter specific protocol or capture all"
+        )
+    
+    with col2:
+        st.markdown("**Capture Info:**")
+        st.markdown(f"""
+        - Duration: {capture_duration} seconds
+        - Filter: {protocol_filter}
+        - Expected packets: ~{capture_duration * 10} packets
+        - Sample rate: ~10 packets/second
+        """)
+        
+        st.warning("""
+        **⚠️ Privacy Notice:**
+        
+        Network capture may record sensitive data.
+        Only capture on networks you own or have permission to monitor.
+        """)
+    
+    # Control buttons
+    st.markdown("---")
+    
+    col_btn1, col_btn2 = st.columns(2)
+    
+    with col_btn1:
+        start_capture = st.button("📡 Start Capture", type="primary", use_container_width=True)
+    
+    with col_btn2:
+        if st.button("🔄 Clear Results", use_container_width=True):
+            if 'capture_results' in st.session_state:
+                del st.session_state.capture_results
+            st.rerun()
+    
+    # Initialize packet capture
+    packet_capturer = PacketCapture(logger)
+    
+    # Execute capture
+    if start_capture:
+        st.markdown("---")
+        st.markdown("## 📡 Capturing Traffic...")
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        packet_counter = st.empty()
+        
+        # Capture traffic
+        start_time = time.time()
+        
+        # Start capture in thread
+        capture_thread = threading.Thread(
+            target=lambda: setattr(st.session_state, 'capture_results',
+                                  packet_capturer.capture_traffic(capture_duration, protocol_filter))
+        )
+        capture_thread.start()
+        
+        # Update progress
+        while capture_thread.is_alive():
+            elapsed = time.time() - start_time
+            progress = min(int((elapsed / capture_duration) * 100), 100)
+            progress_bar.progress(progress)
+            
+            status_text.info(f"📡 Capturing... {elapsed:.1f}s / {capture_duration}s")
+            packet_counter.metric("Packets Captured", len(packet_capturer.packets))
+            
+            time.sleep(0.5)
+        
+        capture_thread.join()
+        
+        progress_bar.progress(100)
+        status_text.success("✅ Capture completed!")
+    
+    # Display results
+    if 'capture_results' in st.session_state:
+        results = st.session_state.capture_results
+        
+        st.markdown("---")
+        st.markdown("## 📊 Traffic Analysis")
+        
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Packets", results['total_packets'])
+        
+        with col2:
+            kb = results['total_bytes'] / 1024
+            st.metric("Traffic Volume", f"{kb:.1f} KB")
+        
+        with col3:
+            protocols = len(results['protocol_distribution'])
+            st.metric("Protocols", protocols)
+        
+        with col4:
+            avg_size = results['total_bytes'] / results['total_packets'] if results['total_packets'] > 0 else 0
+            st.metric("Avg Packet Size", f"{avg_size:.0f} bytes")
+        
+        st.markdown("---")
+        
+        # Protocol distribution
+        col_p1, col_p2 = st.columns(2)
+        
+        with col_p1:
+            st.markdown("### 📊 Protocol Distribution")
+            
+            protocol_dist = results['protocol_distribution']
+            total = sum(protocol_dist.values())
+            
+            for protocol, count in sorted(protocol_dist.items(), key=lambda x: x[1], reverse=True):
+                percentage = (count / total * 100) if total > 0 else 0
+                
+                # Protocol colors
+                colors = {
+                    "HTTP": "🟢",
+                    "HTTPS": "🟢",
+                    "DNS": "🔵",
+                    "TCP": "🟡",
+                    "UDP": "🟠",
+                    "ICMP": "⚪"
+                }
+                
+                emoji = colors.get(protocol, "⚫")
+                
+                st.markdown(f"{emoji} **{protocol}:** {count} packets ({percentage:.1f}%)")
+                st.progress(percentage / 100)
+        
+        with col_p2:
+            st.markdown("### 🌐 Top Talkers (IPs)")
+            
+            for ip_info in results['top_ips'][:5]:
+                st.markdown(f"**{ip_info['ip']}**")
+                st.markdown(f"Packets: {ip_info['packets']}")
+                st.markdown("---")
+        
+        # Port analysis
+        st.markdown("### 🔌 Top Destination Ports")
+        
+        port_col1, port_col2, port_col3 = st.columns(3)
+        
+        for i, port_info in enumerate(results['top_ports'][:6]):
+            col = [port_col1, port_col2, port_col3][i % 3]
+            
+            with col:
+                port_name = {
+                    80: "HTTP",
+                    443: "HTTPS",
+                    53: "DNS",
+                    22: "SSH",
+                    21: "FTP",
+                    25: "SMTP",
+                    3306: "MySQL",
+                    5432: "PostgreSQL"
+                }.get(port_info['port'], "Unknown")
+                
+                st.metric(
+                    f"Port {port_info['port']}",
+                    port_info['packets'],
+                    delta=port_name
+                )
+        
+        # Packet list
+        st.markdown("---")
+        st.markdown("### 📝 Captured Packets (Last 20)")
+        
+        # Display packets in table format
+        for i, packet in enumerate(results['packets'][-20:], 1):
+            with st.expander(f"Packet {i}: {packet['protocol']} | {packet['src_ip']} → {packet['dst_ip']}"):
+                col_a, col_b = st.columns(2)
+                
+                with col_a:
+                    st.markdown(f"""
+                    **Timestamp:** {packet['timestamp']}  
+                    **Protocol:** {packet['protocol']}  
+                    **Length:** {packet['length']} bytes
+                    """)
+                
+                with col_b:
+                    st.markdown(f"""
+                    **Source:** {packet['src_ip']}:{packet['src_port']}  
+                    **Destination:** {packet['dst_ip']}:{packet['dst_port']}  
+                    **Info:** {packet['info']}
+                    """)
+        
+        # Security insights
+        st.markdown("---")
+        st.markdown("### 🔒 Security Insights")
+        
+        # Analyze for suspicious patterns
+        http_count = results['protocol_distribution'].get('HTTP', 0)
+        https_count = results['protocol_distribution'].get('HTTPS', 0)
+        
+        if http_count > https_count:
+            st.warning(f"""
+            ⚠️ **Unencrypted Traffic Detected**
+            
+            Found {http_count} HTTP packets vs {https_count} HTTPS packets.
+            
+            **Recommendation:** Use HTTPS for all sensitive communications.
+            """)
+        else:
+            st.success("✅ Most traffic is encrypted (HTTPS)")
+        
+        # DNS analysis
+        dns_count = results['protocol_distribution'].get('DNS', 0)
+        if dns_count > results['total_packets'] * 0.3:
+            st.info(f"""
+            📊 **High DNS Activity**
+            
+            DNS queries represent {(dns_count/results['total_packets']*100):.1f}% of traffic.
+            This could indicate normal browsing or potential DNS tunneling.
+            """)
+        
+        # Export options
+        st.markdown("---")
+        st.markdown("### 📥 Export Captured Data")
+        
+        col_exp1, col_exp2 = st.columns(2)
+        
+        with col_exp1:
+            if st.button("📦 Export PCAP (Text Format)", use_container_width=True):
+                filename = f"capture_9953_Moazam_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pcap"
+                filepath = packet_capturer.export_pcap(filename)
+                
+                with open(filepath, 'r') as f:
+                    st.download_button(
+                        label="⬇️ Download PCAP",
+                        data=f.read(),
+                        file_name=filename,
+                        mime="text/plain"
+                    )
+                st.success(f"✅ PCAP exported: {filename}")
+        
+        with col_exp2:
+            if st.button("📊 Export Analysis (JSON)", use_container_width=True):
+                filename = f"traffic_analysis_9953_Moazam_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                filepath = packet_capturer.export_json(results, filename)
+                
+                with open(filepath, 'r') as f:
+                    st.download_button(
+                        label="⬇️ Download Analysis",
+                        data=f.read(),
+                        file_name=filename,
+                        mime="application/json"
+                    )
+                st.success(f"✅ Analysis exported: {filename}")
 
 # ============================================================================
 # WEB DISCOVERY VIEW
