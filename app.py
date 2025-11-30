@@ -1783,29 +1783,6 @@ def show_dashboard(logger, dry_run):
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Module Status Overview
-    st.markdown("### 📊 Module Status Overview")
-    
-    status_col1, status_col2, status_col3, status_col4, status_col5, status_col6 = st.columns(6)
-    
-    with status_col1:
-        st.metric("Port Scanner", "✅ Ready", delta="Active")
-    
-    with status_col2:
-        st.metric("Password Test", "✅ Ready", delta="Active")
-    
-    with status_col3:
-        st.metric("Stress Test", "✅ Ready", delta="Active")
-    
-    with status_col4:
-        st.metric("Web Discovery", "✅ Ready", delta="Active")
-    
-    with status_col5:
-        st.metric("Packet Capture", "✅ Ready", delta="Active")
-    
-    with status_col6:
-        st.metric("Reports", "✅ Ready", delta="Active")
-    
     # Quick Start Guide with more details
     with st.expander("📖 Quick Start Guide - How to Use This Toolkit"):
         st.markdown("""
@@ -1980,3 +1957,4 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
