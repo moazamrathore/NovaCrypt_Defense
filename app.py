@@ -298,6 +298,9 @@ class PacketCapture:
     
     def export_pcap(self, filename):
         """Simulate .pcap export"""
+        # Ensure evidence directory exists
+        Path("evidence").mkdir(exist_ok=True)
+        
         filepath = f"evidence/{filename}"
         
         # Create a text representation (real .pcap would need scapy)
@@ -320,6 +323,9 @@ class PacketCapture:
     
     def export_json(self, analysis, filename):
         """Export analysis to JSON"""
+        # Ensure evidence directory exists
+        Path("evidence").mkdir(exist_ok=True)
+        
         filepath = f"evidence/{filename}"
         with open(filepath, 'w') as f:
             json.dump(analysis, indent=2, fp=f)
@@ -499,6 +505,9 @@ class WebDiscovery:
     
     def export_results(self, results, filename):
         """Export discovery results to JSON"""
+        # Ensure evidence directory exists
+        Path("evidence").mkdir(exist_ok=True)
+        
         filepath = f"evidence/{filename}"
         with open(filepath, 'w') as f:
             json.dump(results, indent=2, fp=f)
@@ -673,6 +682,9 @@ class StressTester:
     
     def export_results(self, results, filename):
         """Export stress test results to JSON"""
+        # Ensure evidence directory exists
+        Path("evidence").mkdir(exist_ok=True)
+        
         filepath = f"evidence/{filename}"
         with open(filepath, 'w') as f:
             json.dump(results, indent=2, fp=f)
@@ -966,6 +978,9 @@ class PasswordAssessment:
     
     def export_results(self, results, filename):
         """Export assessment results to JSON"""
+        # Ensure evidence directory exists
+        Path("evidence").mkdir(exist_ok=True)
+        
         filepath = f"evidence/{filename}"
         with open(filepath, 'w') as f:
             json.dump(results, indent=2, fp=f)
@@ -1110,6 +1125,9 @@ class PortScanner:
     
     def export_json(self, results, filename):
         """Export results to JSON"""
+        # Ensure evidence directory exists
+        Path("evidence").mkdir(exist_ok=True)
+        
         filepath = f"evidence/{filename}"
         with open(filepath, 'w') as f:
             json.dump(results, indent=2, fp=f)
@@ -1118,6 +1136,8 @@ class PortScanner:
     
     def export_html(self, results, filename):
         """Export results to HTML"""
+        # Ensure evidence directory exists
+        Path("evidence").mkdir(exist_ok=True)
         html = f"""
 <!DOCTYPE html>
 <html>
@@ -3283,7 +3303,7 @@ def show_dashboard(logger, dry_run):
             vulnerability assessment, and security analysis.
         </p>
         <p style='color: #00bfff; font-size: 1.1rem; margin: 20px 0;'>
-            Built entirely in Python, our toolkit delivers enterprise-grade security testing 
+            Built entirely in Python without external Kali tools, our toolkit delivers enterprise-grade security testing 
             with real-time monitoring, comprehensive logging, and professional reporting capabilities.
         </p>
         <p style='color: #00ff7f; font-size: 1rem; margin-top: 25px;'>
@@ -3294,7 +3314,7 @@ def show_dashboard(logger, dry_run):
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Feature Grid 
+    # Feature Grid - just display cards (no buttons)
     st.markdown("### 🎯 Available Security Modules")
     st.markdown("*Use the sidebar to select a module*")
     st.markdown("<br>", unsafe_allow_html=True)
@@ -3420,7 +3440,7 @@ def show_dashboard(logger, dry_run):
         - 📊 **Auto Reports:** PDF/Word/JSON exports with findings
         - 💾 **Persistent Storage:** All logs saved to `evidence/` directory
         - 🔍 **Audit Ready:** Logs formatted for security audits
-
+        
         """)
     
     st.markdown("<br>", unsafe_allow_html=True)
