@@ -646,10 +646,44 @@ def show_port_scanner(logger, dry_run):
     col1, col2 = st.columns(2)
     
     with col1:
+        # Predefined target selection
+        target_preset = st.selectbox(
+            "🎯 Quick Select Target",
+            [
+                "Custom (Enter Below)",
+                "scanme.nmap.org (Official Nmap Test)",
+                "testphp.vulnweb.com (Acunetix Vulnerable App)",
+                "testhtml5.vulnweb.com (HTML5 Test App)",
+                "demo.testfire.net (IBM AppScan Demo)",
+                "zero.webappsecurity.com (Security Test Site)",
+                "localhost (Your Machine)",
+                "127.0.0.1 (Loopback)"
+            ]
+        )
+        
+        # Extract target from selection
+        if target_preset == "Custom (Enter Below)":
+            default_target = ""
+        elif "scanme.nmap.org" in target_preset:
+            default_target = "scanme.nmap.org"
+        elif "testphp.vulnweb.com" in target_preset:
+            default_target = "testphp.vulnweb.com"
+        elif "testhtml5.vulnweb.com" in target_preset:
+            default_target = "testhtml5.vulnweb.com"
+        elif "demo.testfire.net" in target_preset:
+            default_target = "demo.testfire.net"
+        elif "zero.webappsecurity.com" in target_preset:
+            default_target = "zero.webappsecurity.com"
+        elif "localhost" in target_preset:
+            default_target = "localhost"
+        else:
+            default_target = "127.0.0.1"
+        
         target = st.text_input(
-            "🎯 Target (IP or Domain)",
-            value="scanme.nmap.org",
-            help="Enter IP address or domain name to scan"
+            "🌐 Target (IP or Domain)",
+            value=default_target,
+            help="Enter IP address or domain name to scan",
+            placeholder="e.g., scanme.nmap.org or 192.168.1.1"
         )
         
         scan_type = st.selectbox(
@@ -720,25 +754,51 @@ def show_port_scanner(logger, dry_run):
             ### How to Use Port Scanner
             
             **Target Selection:**
-            - Enter IP address (e.g., `192.168.1.1`)
-            - Enter domain name (e.g., `scanme.nmap.org`)
-            - Approved targets: scanme.nmap.org, testphp.vulnweb.com, localhost
+            
+            **✅ SAFE & LEGAL Targets (Pre-approved):**
+            - `scanme.nmap.org` - Official Nmap project test server
+            - `testphp.vulnweb.com` - Acunetix vulnerable web application
+            - `testhtml5.vulnweb.com` - HTML5 security test application
+            - `demo.testfire.net` - IBM AppScan demo banking site
+            - `zero.webappsecurity.com` - Security testing platform
+            - `localhost` / `127.0.0.1` - Your own computer
+            - `192.168.x.x` - Your local network (if you own it)
+            
+            **❌ NEVER Scan These (Illegal!):**
+            - Any website you don't own
+            - Commercial sites (Google, Amazon, Facebook, etc.)
+            - Government sites (.gov domains)
+            - Educational institutions (without permission)
+            - Banking or financial sites
+            
+            **⚖️ Legal Notice:**
+            Unauthorized port scanning is illegal under computer fraud laws in most countries.
+            Always obtain written permission before scanning any target.
+            
+            ---
             
             **Scan Types:**
             - **Common Ports:** Scans 17 most common services (fastest)
             - **Quick Scan:** Ports 1-1024 (standard services)
-            - **Full Scan:** All 65535 ports (very slow)
-            - **Custom Range:** Specify exact ports
+            - **Full Scan:** All 65535 ports (very slow, 30+ minutes)
+            - **Custom Range:** Specify exact ports (e.g., 80,443,8080)
             
             **Performance Tips:**
-            - More threads = faster scan
+            - More threads = faster scan (but may trigger IDS/IPS)
             - Lower timeout = faster but may miss slow services
-            - Use common ports for quick recon
+            - Use "Common Ports" for quick reconnaissance
+            - Use "Quick Scan" for thorough web app testing
+            
+            **Recommended Testing Workflow:**
+            1. Start with `scanme.nmap.org` + Common Ports
+            2. Try `testphp.vulnweb.com` for web-specific ports
+            3. Test `localhost` to see your own services
             
             **Ethical Guidelines:**
-            - Only scan authorized targets
-            - Avoid aggressive scanning (high threads)
-            - Do not scan during peak hours
+            - Only scan during off-peak hours
+            - Use reasonable thread counts (50-100)
+            - Don't scan the same target repeatedly
+            - Document all authorized scans in logs
             """)
     
     # Execute Scan
@@ -749,13 +809,45 @@ def show_port_scanner(logger, dry_run):
         
         # Validation
         if not dry_run:
-            # Check if target is in approved list
-            consent_targets = ["scanme.nmap.org", "testphp.vulnweb.com", "localhost", "127.0.0.1", "example.com"]
-            is_approved = any(approved in target.lower() for approved in consent_targets)
+            # Extended list of approved targets
+            consent_targets = [
+                "scanme.nmap.org",
+                "testphp.vulnweb.com", 
+                "testhtml5.vulnweb.com",
+                "demo.testfire.net",
+                "zero.webappsecurity.com",
+                "webscantest.com",
+                "localhost", 
+                "127.0.0.1",
+                "0.0.0.0",
+                "example.com"
+            ]
+            
+            # Check if it's a local IP (192.168.x.x or 10.x.x.x)
+            is_local_ip = any(target.startswith(prefix) for prefix in ["192.168.", "10.", "172.16."])
+            
+            is_approved = any(approved in target.lower() for approved in consent_targets) or is_local_ip
             
             if not is_approved:
-                st.warning(f"⚠️ Target '{target}' is not in the approved list. Ensure you have authorization!")
-                confirm = st.checkbox("✅ I confirm I have authorization to scan this target")
+                st.warning(f"""
+                ⚠️ **Target Authorization Required**
+                
+                Target '{target}' is not in the pre-approved list.
+                
+                **Approved Targets:**
+                - scanme.nmap.org (Official Nmap test server)
+                - testphp.vulnweb.com (Acunetix test site)
+                - testhtml5.vulnweb.com (HTML5 test app)
+                - demo.testfire.net (IBM AppScan demo)
+                - zero.webappsecurity.com (Security test site)
+                - localhost / 127.0.0.1 (Your machine)
+                - 192.168.x.x / 10.x.x.x (Local network)
+                
+                **⚖️ Legal Warning:** Unauthorized port scanning is illegal in many jurisdictions.
+                Only scan systems you own or have explicit written permission to test.
+                """)
+                
+                confirm = st.checkbox("✅ I confirm I have legal authorization to scan this target")
                 if not confirm:
                     st.error("❌ Scan aborted - authorization required")
                     logger.log("PORT_SCAN", "Aborted", f"Unauthorized target: {target}", "WARNING")
