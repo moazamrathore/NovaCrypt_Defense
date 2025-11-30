@@ -422,46 +422,77 @@ def show_dashboard(logger, dry_run):
     
     logger.log("DASHBOARD", "Viewed", "User accessed dashboard")
     
-    # Welcome message
+    # Welcome message with more details
     st.markdown("""
-    <div style='background: rgba(0, 255, 245, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00fff5;'>
+    <div style='background: rgba(0, 255, 245, 0.1); padding: 25px; border-radius: 10px; border: 1px solid #00fff5;'>
         <h3 style='color: #00fff5; margin-top: 0;'>⚡ Welcome to NovaCrypt Defense</h3>
-        <p style='color: #fff;'>
+        <p style='color: #fff; font-size: 1.1rem; line-height: 1.6;'>
             A comprehensive Python-based security toolkit designed for PayBuddy FinTech security testing.
-            Select a module from the sidebar to begin your authorized security assessment.
+            This suite provides <strong>6 powerful modules</strong> for authorized penetration testing and vulnerability assessment.
+        </p>
+        <p style='color: #00bfff; margin-bottom: 0;'>
+            📌 <strong>Select any module below or use the sidebar</strong> to begin your security assessment.
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Feature Grid
+    # Feature Grid with clickable cards
+    st.markdown("### 🎯 Available Security Modules")
+    st.markdown("*Click on any module card to start testing*")
+    st.markdown("<br>", unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
+        if st.button("🔍 Port Scanner", key="btn_port", use_container_width=True):
+            st.session_state.selected_module = "🔍 Port Scanner"
+            st.rerun()
         st.markdown("""
-        <div style='background: rgba(0, 191, 255, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00bfff; text-align: center;'>
-            <h2 style='color: #00bfff;'>🔍</h2>
-            <h4 style='color: #00bfff;'>Port Scanner</h4>
-            <p style='color: #ccc; font-size: 0.9rem;'>TCP scanning & banner grabbing with multi-threading</p>
+        <div style='background: rgba(0, 191, 255, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00bfff; min-height: 180px;'>
+            <h4 style='color: #00bfff;'>🔍 Port Scanner</h4>
+            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
+                <strong>Capabilities:</strong><br>
+                • Multi-threaded TCP port scanning<br>
+                • Service detection & banner grabbing<br>
+                • Export results to JSON/HTML<br>
+                • Identify open ports & running services
+            </p>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
+        if st.button("🔑 Password Testing", key="btn_pass", use_container_width=True):
+            st.session_state.selected_module = "🔑 Password Assessment"
+            st.rerun()
         st.markdown("""
-        <div style='background: rgba(0, 255, 127, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00ff7f; text-align: center;'>
-            <h2 style='color: #00ff7f;'>🔑</h2>
-            <h4 style='color: #00ff7f;'>Password Testing</h4>
-            <p style='color: #ccc; font-size: 0.9rem;'>Policy checks & entropy analysis</p>
+        <div style='background: rgba(0, 255, 127, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00ff7f; min-height: 180px;'>
+            <h4 style='color: #00ff7f;'>🔑 Password Testing</h4>
+            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
+                <strong>Capabilities:</strong><br>
+                • Password strength analysis<br>
+                • Policy compliance checking<br>
+                • Entropy calculation (Shannon)<br>
+                • Hash simulation (MD5/SHA256/bcrypt)
+            </p>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
+        if st.button("💥 Stress Testing", key="btn_dos", use_container_width=True):
+            st.session_state.selected_module = "💥 DOS/Stress Test"
+            st.rerun()
         st.markdown("""
-        <div style='background: rgba(255, 165, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ffa500; text-align: center;'>
-            <h2 style='color: #ffa500;'>💥</h2>
-            <h4 style='color: #ffa500;'>Stress Testing</h4>
-            <p style='color: #ccc; font-size: 0.9rem;'>Controlled DOS with latency monitoring</p>
+        <div style='background: rgba(255, 165, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ffa500; min-height: 180px;'>
+            <h4 style='color: #ffa500;'>💥 Stress Testing</h4>
+            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
+                <strong>Capabilities:</strong><br>
+                • Controlled DOS simulation<br>
+                • HTTP flood testing (max 200 clients)<br>
+                • Real-time latency monitoring<br>
+                • Performance graphs & reports
+            </p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -470,81 +501,246 @@ def show_dashboard(logger, dry_run):
     col4, col5, col6 = st.columns(3)
     
     with col4:
+        if st.button("🌐 Web Discovery", key="btn_web", use_container_width=True):
+            st.session_state.selected_module = "🌐 Web Discovery"
+            st.rerun()
         st.markdown("""
-        <div style='background: rgba(138, 43, 226, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #8a2be2; text-align: center;'>
-            <h2 style='color: #8a2be2;'>🌐</h2>
-            <h4 style='color: #8a2be2;'>Web Discovery</h4>
-            <p style='color: #ccc; font-size: 0.9rem;'>Directory enum & API endpoints</p>
+        <div style='background: rgba(138, 43, 226, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #8a2be2; min-height: 180px;'>
+            <h4 style='color: #8a2be2;'>🌐 Web Discovery</h4>
+            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
+                <strong>Capabilities:</strong><br>
+                • Directory enumeration (DIRB-style)<br>
+                • Subdomain discovery<br>
+                • API endpoint detection<br>
+                • Hidden resource identification
+            </p>
         </div>
         """, unsafe_allow_html=True)
     
     with col5:
+        if st.button("📦 Packet Capture", key="btn_packet", use_container_width=True):
+            st.session_state.selected_module = "📦 Packet Capture"
+            st.rerun()
         st.markdown("""
-        <div style='background: rgba(255, 20, 147, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff1493; text-align: center;'>
-            <h2 style='color: #ff1493;'>📦</h2>
-            <h4 style='color: #ff1493;'>Packet Capture</h4>
-            <p style='color: #ccc; font-size: 0.9rem;'>Network traffic analysis with Scapy</p>
+        <div style='background: rgba(255, 20, 147, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff1493; min-height: 180px;'>
+            <h4 style='color: #ff1493;'>📦 Packet Capture</h4>
+            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
+                <strong>Capabilities:</strong><br>
+                • Real-time traffic capture<br>
+                • Protocol analysis (HTTP/DNS/TCP)<br>
+                • Save .pcap files<br>
+                • Network traffic visualization
+            </p>
         </div>
         """, unsafe_allow_html=True)
     
     with col6:
+        if st.button("📊 Reports & Logs", key="btn_logs", use_container_width=True):
+            st.session_state.selected_module = "📊 Logs & Reports"
+            st.rerun()
         st.markdown("""
-        <div style='background: rgba(255, 69, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff4500; text-align: center;'>
-            <h2 style='color: #ff4500;'>📊</h2>
-            <h4 style='color: #ff4500;'>Reports & Logs</h4>
-            <p style='color: #ccc; font-size: 0.9rem;'>Auto-generated PDF/JSON reports</p>
+        <div style='background: rgba(255, 69, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff4500; min-height: 180px;'>
+            <h4 style='color: #ff4500;'>📊 Reports & Logs</h4>
+            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
+                <strong>Capabilities:</strong><br>
+                • View all security logs<br>
+                • SHA-256 integrity verification<br>
+                • Export PDF/Word/JSON reports<br>
+                • Comprehensive findings summary
+            </p>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Important Notes
-    st.markdown("### ⚠️ Important Guidelines")
+    # Important Notes with more details
+    st.markdown("### ⚠️ Important Security Guidelines")
     
     col_a, col_b = st.columns(2)
     
     with col_a:
         st.warning("""
-        **🔒 Ethical Testing Only**
-        - Only test authorized targets
-        - Never attack external systems without permission
-        - Follow responsible disclosure
+        **🔒 Ethical Testing Principles**
+        
+        - ✅ Only test **authorized targets** listed in consent.txt
+        - ✅ Never attack external/public systems without written permission
+        - ✅ Follow **responsible disclosure** for discovered vulnerabilities
+        - ✅ Use **rate limiting** to avoid service disruption
+        - ✅ Document all activities for audit trails
+        
+        **⚖️ Legal Compliance:**
+        Unauthorized access to computer systems is illegal under computer fraud laws.
+        Always obtain proper authorization before testing.
         """)
     
     with col_b:
         st.info("""
-        **📋 Evidence Collection**
-        - All actions are logged with timestamps
-        - SHA-256 integrity for log files
-        - Auto-generated reports with findings
+        **📋 Evidence Collection System**
+        
+        - 📝 **Timestamped Logging:** Every action recorded with precise timestamps
+        - 🔐 **SHA-256 Integrity:** Cryptographic verification of log authenticity
+        - 📊 **Auto Reports:** PDF/Word/JSON exports with findings
+        - 💾 **Persistent Storage:** All logs saved to `evidence/` directory
+        - 🔍 **Audit Ready:** Logs formatted for security audits
+        
+        **📌 File Naming Convention:**
+        All outputs include registration numbers (e.g., `scan_9953_Moazam.json`)
         """)
     
-    # Quick Start Guide
-    with st.expander("📖 Quick Start Guide"):
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Module Status Overview
+    st.markdown("### 📊 Module Status Overview")
+    
+    status_col1, status_col2, status_col3, status_col4, status_col5, status_col6 = st.columns(6)
+    
+    with status_col1:
+        st.metric("Port Scanner", "✅ Ready", delta="Active")
+    
+    with status_col2:
+        st.metric("Password Test", "✅ Ready", delta="Active")
+    
+    with status_col3:
+        st.metric("Stress Test", "✅ Ready", delta="Active")
+    
+    with status_col4:
+        st.metric("Web Discovery", "✅ Ready", delta="Active")
+    
+    with status_col5:
+        st.metric("Packet Capture", "✅ Ready", delta="Active")
+    
+    with status_col6:
+        st.metric("Reports", "✅ Ready", delta="Active")
+    
+    # Quick Start Guide with more details
+    with st.expander("📖 Quick Start Guide - How to Use This Toolkit"):
         st.markdown("""
-        ### Getting Started with NovaCrypt Defense
+        ### 🚀 Getting Started with NovaCrypt Defense
         
-        1. **Identity Verification** ✅
-           - Ensure `identity.txt` and `consent.txt` are verified (check sidebar)
+        #### **Step 1: Identity Verification** ✅
+        - The system automatically verifies `identity.txt` and `consent.txt`
+        - Check the sidebar for ✅ green checkmarks confirming verification
+        - If files are missing, they'll be created automatically with team information
         
-        2. **Select a Module** 🎯
-           - Use the sidebar dropdown to choose your testing tool
+        #### **Step 2: Select Your Module** 🎯
+        You can select a module in **two ways**:
+        - **Option A:** Click any module card on the dashboard (above)
+        - **Option B:** Use the dropdown in the sidebar under "Select Module"
         
-        3. **Configure Parameters** ⚙️
-           - Enter target URL/IP, set options, configure limits
+        #### **Step 3: Configure Testing Parameters** ⚙️
+        Each module has specific configuration options:
+        - **Port Scanner:** Enter target IP/domain, port range, thread count
+        - **Password Test:** Input passwords for analysis or upload hash files
+        - **Stress Test:** Set target URL, client count (max 200), duration
+        - **Web Discovery:** Specify target domain, wordlist selection
+        - **Packet Capture:** Choose network interface, filter protocols
         
-        4. **Run Assessment** 🚀
-           - Click the execution button to start testing
+        #### **Step 4: Run Your Security Assessment** 🚀
+        - Review all parameters before execution
+        - Click the main action button (e.g., "Start Scan", "Run Test")
+        - Monitor real-time output in the interface
+        - All actions are logged automatically
         
-        5. **Review Results** 📊
-           - View real-time output and download reports
+        #### **Step 5: Analyze Results** 📊
+        - View detailed results directly in the interface
+        - Download reports in multiple formats (PDF/Word/JSON)
+        - Check "Logs & Reports" module for complete activity history
+        - Export findings for documentation
         
-        6. **Check Logs** 📝
-           - Navigate to "Logs & Reports" to view all activity
+        #### **Step 6: Review Security Logs** 📝
+        - Navigate to "Logs & Reports" from sidebar or dashboard
+        - View timestamped entries for all activities
+        - Verify log integrity with SHA-256 hash
+        - Export logs for audit purposes
+        
+        ---
+        
+        ### 🛡️ Best Practices
+        
+        **Before Testing:**
+        - ✅ Verify you have written authorization
+        - ✅ Ensure targets are in consent.txt
+        - ✅ Use dry-run mode first to test configuration
+        - ✅ Review rate limits and throttling settings
+        
+        **During Testing:**
+        - ⚡ Monitor system resources
+        - ⚡ Watch for error messages or warnings
+        - ⚡ Keep notes of unusual findings
+        - ⚡ Be prepared to stop tests if issues arise
+        
+        **After Testing:**
+        - 📋 Generate comprehensive reports
+        - 📋 Document all vulnerabilities found
+        - 📋 Provide remediation recommendations
+        - 📋 Archive logs for compliance
+        
+        ---
+        
+        ### 💡 Pro Tips
+        
+        - 🎯 Start with **Port Scanner** to identify open services
+        - 🎯 Use **Password Assessment** to test authentication strength
+        - 🎯 Run **Stress Tests** during off-peak hours
+        - 🎯 **Web Discovery** is great for API reconnaissance
+        - 🎯 **Packet Capture** helps understand traffic patterns
+        - 🎯 Always check **Logs & Reports** after each test
+        
+        ---
+        
+        ### 🆘 Troubleshooting
+        
+        **Issue: Module not responding**
+        - Check your internet connection
+        - Verify target is accessible
+        - Review firewall settings
+        
+        **Issue: Permission errors**
+        - Ensure identity.txt and consent.txt are present
+        - Verify target is in approved list
+        - Check file permissions
+        
+        **Issue: Export not working**
+        - Ensure evidence/ directory exists
+        - Check available disk space
+        - Try different export format
         """)
     
     if dry_run:
-        st.warning("🧪 **Dry Run Mode Active** - Simulations only, no actual attacks")
+        st.warning("🧪 **Dry Run Mode Active** - Simulations only, no actual attacks will be performed")
+    
+    # Additional Context Section
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 🎓 Academic Context")
+    
+    info_col1, info_col2, info_col3 = st.columns(3)
+    
+    with info_col1:
+        st.info("""
+        **📚 Course Information**
+        
+        - **Course:** CY4053 - Cybersecurity for FinTech
+        - **Semester:** Fall 2025
+        - **Institution:** BSFT 7th Semester
+        - **Project Type:** Final Group Project
+        """)
+    
+    with info_col2:
+        st.success("""
+        **👥 Team: NovaCrypt Defense**
+        
+        - Moazam (BSFT07-9953)
+        - Abdullah (BSFT07-7465)
+        
+        **Deadline:** November 30, 2025
+        """)
+    
+    with info_col3:
+        st.warning("""
+        **🎯 Project Scenario**
+        
+        Security testing toolkit for **PayBuddy** - a fictional FinTech startup processing online payments and micro-transactions.
+        """)
 
 # ============================================================================
 # LOGS & REPORTS VIEW
