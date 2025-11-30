@@ -9,6 +9,8 @@ import threading
 from queue import Queue
 import time
 import re
+import math
+import bcrypt
 
 # ============================================================================
 # PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
@@ -132,6 +134,299 @@ def load_custom_css():
     }
     </style>
     """, unsafe_allow_html=True)
+
+# ============================================================================
+# PASSWORD ASSESSMENT MODULE
+# ============================================================================
+class PasswordAssessment:
+    def __init__(self, logger):
+        self.logger = logger
+        
+        # Common weak passwords list (top 100)
+        self.common_passwords = [
+            "password", "123456", "123456789", "12345678", "12345", "1234567",
+            "password1", "123123", "1234567890", "000000", "qwerty", "abc123",
+            "111111", "admin", "letmein", "welcome", "monkey", "dragon", "master",
+            "sunshine", "princess", "football", "shadow", "superman", "696969",
+            "michael", "jennifer", "computer", "trustno1", "mustang", "baseball",
+            "hunter", "charlie", "password123", "welcome123", "admin123", "root",
+            "toor", "pass", "test", "guest", "info", "sample", "changeme",
+            "secret", "login", "demo", "user", "default", "temp", "qwerty123"
+        ]
+        
+        # Password policy rules
+        self.policy = {
+            "min_length": 8,
+            "max_length": 128,
+            "require_uppercase": True,
+            "require_lowercase": True,
+            "require_digits": True,
+            "require_special": True,
+            "special_chars": "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        }
+    
+    def calculate_entropy(self, password):
+        """Calculate Shannon entropy of password"""
+        if not password:
+            return 0.0
+        
+        # Count character frequency
+        freq = {}
+        for char in password:
+            freq[char] = freq.get(char, 0) + 1
+        
+        # Calculate entropy
+        entropy = 0.0
+        length = len(password)
+        
+        for count in freq.values():
+            probability = count / length
+            entropy -= probability * math.log2(probability)
+        
+        # Normalize by length
+        bits = entropy * length
+        
+        return round(bits, 2)
+    
+    def check_character_sets(self, password):
+        """Check which character sets are used"""
+        has_lower = bool(re.search(r'[a-z]', password))
+        has_upper = bool(re.search(r'[A-Z]', password))
+        has_digit = bool(re.search(r'\d', password))
+        has_special = bool(re.search(r'[^a-zA-Z0-9]', password))
+        
+        return {
+            "lowercase": has_lower,
+            "uppercase": has_upper,
+            "digits": has_digit,
+            "special": has_special
+        }
+    
+    def check_patterns(self, password):
+        """Check for common patterns"""
+        patterns_found = []
+        
+        # Sequential numbers
+        if re.search(r'(012|123|234|345|456|567|678|789)', password):
+            patterns_found.append("Sequential numbers")
+        
+        # Repeated characters
+        if re.search(r'(.)\1{2,}', password):
+            patterns_found.append("Repeated characters")
+        
+        # Keyboard patterns
+        keyboard_patterns = ['qwerty', 'asdf', 'zxcv', '1234', 'qwer', 'asdfgh']
+        for pattern in keyboard_patterns:
+            if pattern in password.lower():
+                patterns_found.append(f"Keyboard pattern: {pattern}")
+        
+        # Common words
+        common_words = ['password', 'admin', 'user', 'login', 'welcome', 'test']
+        for word in common_words:
+            if word in password.lower():
+                patterns_found.append(f"Common word: {word}")
+        
+        # Date patterns
+        if re.search(r'(19|20)\d{2}', password):
+            patterns_found.append("Year pattern detected")
+        
+        return patterns_found
+    
+    def check_policy_compliance(self, password):
+        """Check password against policy rules"""
+        issues = []
+        
+        # Length check
+        if len(password) < self.policy["min_length"]:
+            issues.append(f"Too short (minimum {self.policy['min_length']} characters)")
+        
+        if len(password) > self.policy["max_length"]:
+            issues.append(f"Too long (maximum {self.policy['max_length']} characters)")
+        
+        # Character requirements
+        char_sets = self.check_character_sets(password)
+        
+        if self.policy["require_uppercase"] and not char_sets["uppercase"]:
+            issues.append("Missing uppercase letters")
+        
+        if self.policy["require_lowercase"] and not char_sets["lowercase"]:
+            issues.append("Missing lowercase letters")
+        
+        if self.policy["require_digits"] and not char_sets["digits"]:
+            issues.append("Missing digits")
+        
+        if self.policy["require_special"] and not char_sets["special"]:
+            issues.append("Missing special characters")
+        
+        return issues
+    
+    def is_common_password(self, password):
+        """Check if password is in common password list"""
+        return password.lower() in self.common_passwords
+    
+    def calculate_strength_score(self, password):
+        """Calculate overall password strength (0-100)"""
+        score = 0
+        
+        # Length scoring (0-30 points)
+        length = len(password)
+        if length >= 16:
+            score += 30
+        elif length >= 12:
+            score += 25
+        elif length >= 8:
+            score += 15
+        else:
+            score += 5
+        
+        # Character diversity (0-25 points)
+        char_sets = self.check_character_sets(password)
+        score += sum(char_sets.values()) * 6.25
+        
+        # Entropy (0-25 points)
+        entropy = self.calculate_entropy(password)
+        if entropy >= 60:
+            score += 25
+        elif entropy >= 40:
+            score += 20
+        elif entropy >= 30:
+            score += 15
+        else:
+            score += entropy / 3
+        
+        # Pattern penalties (0-20 points deduction)
+        patterns = self.check_patterns(password)
+        penalty = min(len(patterns) * 5, 20)
+        score -= penalty
+        
+        # Common password penalty (-30 points)
+        if self.is_common_password(password):
+            score -= 30
+        
+        # Ensure score is between 0-100
+        score = max(0, min(100, score))
+        
+        return round(score, 1)
+    
+    def get_strength_category(self, score):
+        """Categorize password strength"""
+        if score >= 80:
+            return "Very Strong", "🟢", "#00ff7f"
+        elif score >= 60:
+            return "Strong", "🟡", "#ffa500"
+        elif score >= 40:
+            return "Moderate", "🟠", "#ff8c00"
+        elif score >= 20:
+            return "Weak", "🔴", "#ff4500"
+        else:
+            return "Very Weak", "🔴", "#ff0000"
+    
+    def simulate_hash(self, password, hash_type="all"):
+        """Simulate password hashing (educational only)"""
+        hashes = {}
+        
+        if hash_type in ["all", "md5"]:
+            hashes["MD5"] = hashlib.md5(password.encode()).hexdigest()
+        
+        if hash_type in ["all", "sha256"]:
+            hashes["SHA256"] = hashlib.sha256(password.encode()).hexdigest()
+        
+        if hash_type in ["all", "sha512"]:
+            hashes["SHA512"] = hashlib.sha512(password.encode()).hexdigest()
+        
+        if hash_type in ["all", "bcrypt"]:
+            # Simulate bcrypt (actual bcrypt would be used in production)
+            salt = bcrypt.gensalt()
+            hashes["bcrypt"] = bcrypt.hashpw(password.encode(), salt).decode()
+        
+        return hashes
+    
+    def generate_recommendations(self, password):
+        """Generate actionable security recommendations"""
+        recommendations = []
+        
+        length = len(password)
+        char_sets = self.check_character_sets(password)
+        patterns = self.check_patterns(password)
+        is_common = self.is_common_password(password)
+        
+        # Length recommendations
+        if length < 12:
+            recommendations.append("✅ Increase password length to at least 12 characters (16+ recommended)")
+        
+        # Character diversity
+        if not char_sets["uppercase"]:
+            recommendations.append("✅ Add uppercase letters (A-Z)")
+        
+        if not char_sets["lowercase"]:
+            recommendations.append("✅ Add lowercase letters (a-z)")
+        
+        if not char_sets["digits"]:
+            recommendations.append("✅ Add numbers (0-9)")
+        
+        if not char_sets["special"]:
+            recommendations.append("✅ Add special characters (!@#$%^&*)")
+        
+        # Pattern warnings
+        if patterns:
+            recommendations.append("⚠️ Avoid predictable patterns (sequential numbers, keyboard patterns)")
+        
+        # Common password warning
+        if is_common:
+            recommendations.append("🚨 CRITICAL: This is a commonly used password - change immediately!")
+        
+        # General best practices
+        if length < 16:
+            recommendations.append("💡 Use a passphrase (e.g., 'Coffee-Mountain-Sky-42!')")
+        
+        recommendations.append("💡 Use a unique password for each account")
+        recommendations.append("💡 Consider using a password manager")
+        recommendations.append("💡 Enable two-factor authentication (2FA)")
+        
+        return recommendations
+    
+    def assess_password(self, password):
+        """Comprehensive password assessment"""
+        
+        self.logger.log("PASSWORD_TEST", "Assessment Started", f"Password length: {len(password)}")
+        
+        # Calculate all metrics
+        score = self.calculate_strength_score(password)
+        entropy = self.calculate_entropy(password)
+        char_sets = self.check_character_sets(password)
+        patterns = self.check_patterns(password)
+        policy_issues = self.check_policy_compliance(password)
+        is_common = self.is_common_password(password)
+        category, emoji, color = self.get_strength_category(score)
+        recommendations = self.generate_recommendations(password)
+        
+        result = {
+            "password_length": len(password),
+            "strength_score": score,
+            "strength_category": category,
+            "strength_emoji": emoji,
+            "strength_color": color,
+            "entropy_bits": entropy,
+            "character_sets": char_sets,
+            "patterns_detected": patterns,
+            "policy_compliant": len(policy_issues) == 0,
+            "policy_issues": policy_issues,
+            "is_common_password": is_common,
+            "recommendations": recommendations,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        self.logger.log("PASSWORD_TEST", "Assessment Complete", f"Score: {score}/100, Category: {category}")
+        
+        return result
+    
+    def export_results(self, results, filename):
+        """Export assessment results to JSON"""
+        filepath = f"evidence/{filename}"
+        with open(filepath, 'w') as f:
+            json.dump(results, indent=2, fp=f)
+        self.logger.log("PASSWORD_TEST", "Export", f"Results saved to {filepath}")
+        return filepath
 
 # ============================================================================
 # PORT SCANNER MODULE
@@ -604,8 +899,7 @@ def main():
         show_port_scanner(logger, dry_run)
     
     elif module == "🔑 Password Assessment":
-        st.info("🚧 **Password Assessment Module** - Coming in Phase 2!")
-        st.markdown("This module will check password strength and policies.")
+        show_password_assessment(logger, dry_run)
     
     elif module == "💥 DOS/Stress Test":
         st.info("🚧 **DOS/Stress Test Module** - Coming in Phase 2!")
@@ -621,6 +915,363 @@ def main():
     
     elif module == "📊 Logs & Reports":
         show_logs_reports(logger)
+
+# ============================================================================
+# PASSWORD ASSESSMENT VIEW
+# ============================================================================
+def show_password_assessment(logger, dry_run):
+    st.markdown("## 🔑 Password Assessment Module")
+    
+    logger.log("PASSWORD_TEST", "Module Accessed", "User opened password assessment")
+    
+    st.markdown("""
+    <div style='background: rgba(0, 255, 127, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00ff7f; margin-bottom: 20px;'>
+        <h4 style='color: #00ff7f; margin-top: 0;'>🔐 Comprehensive Password Security Analysis</h4>
+        <p style='color: #fff;'>
+            Test password strength, check policy compliance, calculate entropy, and receive
+            actionable security recommendations. Includes hash simulation for educational purposes.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Assessment Mode Selection
+    st.markdown("### 🎯 Assessment Mode")
+    
+    mode = st.radio(
+        "Choose testing mode:",
+        ["Single Password Analysis", "Batch Password Testing", "Hash Simulation"],
+        horizontal=True
+    )
+    
+    st.markdown("---")
+    
+    # Initialize password tester
+    password_tester = PasswordAssessment(logger)
+    
+    # ========================================================================
+    # MODE 1: SINGLE PASSWORD ANALYSIS
+    # ========================================================================
+    if mode == "Single Password Analysis":
+        st.markdown("### 🔍 Password Analysis")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            password_input = st.text_input(
+                "🔑 Enter Password to Test",
+                type="password",
+                help="Your password is analyzed locally and never stored",
+                placeholder="Enter a password..."
+            )
+            
+            show_password = st.checkbox("👁️ Show password", value=False)
+            
+            if show_password and password_input:
+                st.code(password_input, language="text")
+        
+        with col2:
+            st.info("""
+            **Privacy Notice:**
+            
+            ✅ Analysis is local  
+            ✅ No storage  
+            ✅ No transmission  
+            ✅ Completely safe
+            """)
+        
+        # Quick test buttons
+        st.markdown("#### 🧪 Quick Test Examples")
+        
+        col_ex1, col_ex2, col_ex3, col_ex4 = st.columns(4)
+        
+        with col_ex1:
+            if st.button("Test: Weak", use_container_width=True):
+                password_input = "password123"
+        
+        with col_ex2:
+            if st.button("Test: Moderate", use_container_width=True):
+                password_input = "Pass1234!"
+        
+        with col_ex3:
+            if st.button("Test: Strong", use_container_width=True):
+                password_input = "MyP@ssw0rd2024!"
+        
+        with col_ex4:
+            if st.button("Test: Very Strong", use_container_width=True):
+                password_input = "C0ff33-M0unt@in-Sky!42"
+        
+        # Analyze button
+        st.markdown("---")
+        
+        if st.button("🔍 Analyze Password", type="primary", use_container_width=True, disabled=not password_input):
+            if password_input:
+                # Perform assessment
+                results = password_tester.assess_password(password_input)
+                
+                # Store in session state
+                st.session_state.password_results = results
+                
+                st.success("✅ Analysis complete!")
+        
+        # Display results
+        if 'password_results' in st.session_state:
+            results = st.session_state.password_results
+            
+            st.markdown("---")
+            st.markdown("## 📊 Assessment Results")
+            
+            # Strength meter
+            score = results['strength_score']
+            category = results['strength_category']
+            emoji = results['strength_emoji']
+            color = results['strength_color']
+            
+            st.markdown(f"""
+            <div style='background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 10px; border: 2px solid {color}; text-align: center;'>
+                <h1 style='color: {color}; margin: 0; font-size: 4rem;'>{emoji}</h1>
+                <h2 style='color: {color}; margin: 10px 0;'>{category}</h2>
+                <h1 style='color: {color}; margin: 10px 0; font-size: 3rem;'>{score}/100</h1>
+                <div style='background: #1a1a2e; height: 30px; border-radius: 15px; overflow: hidden; margin-top: 20px;'>
+                    <div style='background: {color}; width: {score}%; height: 100%; transition: width 0.5s;'></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Detailed metrics
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            
+            with col_m1:
+                st.metric("Length", f"{results['password_length']} chars")
+            
+            with col_m2:
+                st.metric("Entropy", f"{results['entropy_bits']} bits")
+            
+            with col_m3:
+                policy_status = "✅ Pass" if results['policy_compliant'] else "❌ Fail"
+                st.metric("Policy Check", policy_status)
+            
+            with col_m4:
+                common_status = "🚨 YES" if results['is_common_password'] else "✅ NO"
+                st.metric("Common Pwd", common_status)
+            
+            st.markdown("---")
+            
+            # Character sets
+            st.markdown("### 🔤 Character Analysis")
+            
+            col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+            
+            char_sets = results['character_sets']
+            
+            with col_c1:
+                if char_sets['lowercase']:
+                    st.success("✅ Lowercase (a-z)")
+                else:
+                    st.error("❌ Lowercase (a-z)")
+            
+            with col_c2:
+                if char_sets['uppercase']:
+                    st.success("✅ Uppercase (A-Z)")
+                else:
+                    st.error("❌ Uppercase (A-Z)")
+            
+            with col_c3:
+                if char_sets['digits']:
+                    st.success("✅ Digits (0-9)")
+                else:
+                    st.error("❌ Digits (0-9)")
+            
+            with col_c4:
+                if char_sets['special']:
+                    st.success("✅ Special (!@#$...)")
+                else:
+                    st.error("❌ Special (!@#$...)")
+            
+            # Patterns detected
+            if results['patterns_detected']:
+                st.markdown("### ⚠️ Patterns Detected")
+                for pattern in results['patterns_detected']:
+                    st.warning(f"🔍 {pattern}")
+            
+            # Policy issues
+            if results['policy_issues']:
+                st.markdown("### ❌ Policy Violations")
+                for issue in results['policy_issues']:
+                    st.error(f"• {issue}")
+            else:
+                st.success("### ✅ Policy Compliant - Meets all requirements")
+            
+            # Recommendations
+            st.markdown("### 💡 Security Recommendations")
+            
+            for i, rec in enumerate(results['recommendations'], 1):
+                st.markdown(f"{i}. {rec}")
+            
+            # Export option
+            st.markdown("---")
+            
+            if st.button("📥 Export Analysis Report (JSON)", use_container_width=True):
+                filename = f"password_analysis_9953_Moazam_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                filepath = password_tester.export_results(results, filename)
+                
+                with open(filepath, 'r') as f:
+                    st.download_button(
+                        label="⬇️ Download Report",
+                        data=f.read(),
+                        file_name=filename,
+                        mime="application/json"
+                    )
+                st.success(f"✅ Report exported: {filename}")
+    
+    # ========================================================================
+    # MODE 2: BATCH PASSWORD TESTING
+    # ========================================================================
+    elif mode == "Batch Password Testing":
+        st.markdown("### 📋 Batch Password Analysis")
+        
+        st.info("""
+        **Test multiple passwords at once**
+        
+        Enter one password per line. Useful for:
+        - Testing user password databases
+        - Comparing password strengths
+        - Bulk policy compliance checking
+        """)
+        
+        passwords_input = st.text_area(
+            "🔑 Enter Passwords (one per line)",
+            height=200,
+            placeholder="password123\nMyP@ssw0rd!\nSecurePass2024\n..."
+        )
+        
+        if st.button("🔍 Analyze All Passwords", type="primary", use_container_width=True):
+            if passwords_input.strip():
+                passwords = [p.strip() for p in passwords_input.split('\n') if p.strip()]
+                
+                st.markdown(f"### 📊 Analyzing {len(passwords)} passwords...")
+                
+                batch_results = []
+                
+                progress_bar = st.progress(0)
+                
+                for i, pwd in enumerate(passwords):
+                    result = password_tester.assess_password(pwd)
+                    result['password_preview'] = pwd[:3] + '*' * (len(pwd) - 3)  # Masked
+                    batch_results.append(result)
+                    progress_bar.progress((i + 1) / len(passwords))
+                
+                st.session_state.batch_results = batch_results
+                
+                st.success(f"✅ Analyzed {len(passwords)} passwords!")
+        
+        # Display batch results
+        if 'batch_results' in st.session_state:
+            results = st.session_state.batch_results
+            
+            st.markdown("---")
+            st.markdown("### 📊 Batch Analysis Results")
+            
+            # Summary statistics
+            col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+            
+            avg_score = sum(r['strength_score'] for r in results) / len(results)
+            weak_count = sum(1 for r in results if r['strength_score'] < 40)
+            strong_count = sum(1 for r in results if r['strength_score'] >= 80)
+            common_count = sum(1 for r in results if r['is_common_password'])
+            
+            with col_s1:
+                st.metric("Average Score", f"{avg_score:.1f}/100")
+            
+            with col_s2:
+                st.metric("Weak Passwords", weak_count, delta="⚠️")
+            
+            with col_s3:
+                st.metric("Strong Passwords", strong_count, delta="✅")
+            
+            with col_s4:
+                st.metric("Common Passwords", common_count, delta="🚨")
+            
+            st.markdown("---")
+            
+            # Individual results table
+            st.markdown("### 📋 Individual Results")
+            
+            for i, result in enumerate(results, 1):
+                with st.expander(f"Password {i}: {result['password_preview']} - {result['strength_emoji']} {result['strength_category']} ({result['strength_score']}/100)"):
+                    col_a, col_b = st.columns(2)
+                    
+                    with col_a:
+                        st.markdown(f"""
+                        **Metrics:**
+                        - Score: {result['strength_score']}/100
+                        - Length: {result['password_length']} characters
+                        - Entropy: {result['entropy_bits']} bits
+                        - Policy: {'✅ Pass' if result['policy_compliant'] else '❌ Fail'}
+                        - Common: {'🚨 YES' if result['is_common_password'] else '✅ NO'}
+                        """)
+                    
+                    with col_b:
+                        st.markdown("**Character Sets:**")
+                        for char_type, present in result['character_sets'].items():
+                            emoji = "✅" if present else "❌"
+                            st.markdown(f"{emoji} {char_type.capitalize()}")
+    
+    # ========================================================================
+    # MODE 3: HASH SIMULATION
+    # ========================================================================
+    elif mode == "Hash Simulation":
+        st.markdown("### 🔐 Password Hash Simulation")
+        
+        st.warning("""
+        **⚠️ Educational Purpose Only**
+        
+        This demonstrates how passwords are hashed. In production:
+        - Never use MD5 or SHA256 for passwords
+        - Always use bcrypt, scrypt, or Argon2
+        - Add proper salting
+        - Use key stretching
+        """)
+        
+        password_hash = st.text_input(
+            "🔑 Enter Password to Hash",
+            type="password",
+            placeholder="Enter password..."
+        )
+        
+        hash_types = st.multiselect(
+            "📊 Select Hash Algorithms",
+            ["MD5", "SHA256", "SHA512", "bcrypt"],
+            default=["MD5", "SHA256", "bcrypt"]
+        )
+        
+        if st.button("🔐 Generate Hashes", type="primary", use_container_width=True):
+            if password_hash:
+                st.markdown("### 🔒 Generated Hashes")
+                
+                hashes = password_tester.simulate_hash(password_hash, "all")
+                
+                for hash_type in hash_types:
+                    if hash_type in hashes:
+                        st.markdown(f"**{hash_type}:**")
+                        st.code(hashes[hash_type], language="text")
+                        
+                        # Security notes
+                        if hash_type == "MD5":
+                            st.error("🚨 MD5 is cryptographically broken - DO NOT use for passwords!")
+                        elif hash_type == "SHA256":
+                            st.warning("⚠️ SHA256 alone is too fast - use with PBKDF2 or switch to bcrypt")
+                        elif hash_type == "bcrypt":
+                            st.success("✅ bcrypt is recommended for password hashing")
+                
+                st.info("""
+                **Why bcrypt?**
+                - Slow by design (prevents brute force)
+                - Automatic salting
+                - Configurable work factor
+                - Industry standard for password storage
+                """)
 
 # ============================================================================
 # PORT SCANNER VIEW
