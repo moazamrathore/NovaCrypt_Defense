@@ -3259,31 +3259,45 @@ def show_port_scanner(logger, dry_run):
         
         with col_exp1:
             if st.button("📄 Export to JSON", use_container_width=True):
+                # Create new scanner instance for export
+                export_scanner = PortScanner(logger)
                 filename = f"portscan_{results['target'].replace('.', '_')}_9953_Moazam.json"
-                filepath = scanner.export_json(results, filename)
                 
-                with open(filepath, 'r') as f:
-                    st.download_button(
-                        label="⬇️ Download JSON",
-                        data=f.read(),
-                        file_name=filename,
-                        mime="application/json"
-                    )
-                st.success(f"✅ Exported to {filename}")
+                try:
+                    filepath = export_scanner.export_json(results, filename)
+                    
+                    with open(filepath, 'r') as f:
+                        st.download_button(
+                            label="⬇️ Download JSON",
+                            data=f.read(),
+                            file_name=filename,
+                            mime="application/json",
+                            key="download_json_port"
+                        )
+                    st.success(f"✅ Exported to {filename}")
+                except Exception as e:
+                    st.error(f"❌ Export failed: {str(e)}")
         
         with col_exp2:
             if st.button("📊 Export to HTML", use_container_width=True):
+                # Create new scanner instance for export
+                export_scanner = PortScanner(logger)
                 filename = f"portscan_{results['target'].replace('.', '_')}_9953_Moazam.html"
-                filepath = scanner.export_html(results, filename)
                 
-                with open(filepath, 'r') as f:
-                    st.download_button(
-                        label="⬇️ Download HTML",
-                        data=f.read(),
-                        file_name=filename,
-                        mime="text/html"
-                    )
-                st.success(f"✅ Exported to {filename}")
+                try:
+                    filepath = export_scanner.export_html(results, filename)
+                    
+                    with open(filepath, 'r') as f:
+                        st.download_button(
+                            label="⬇️ Download HTML",
+                            data=f.read(),
+                            file_name=filename,
+                            mime="text/html",
+                            key="download_html_port"
+                        )
+                    st.success(f"✅ Exported to {filename}")
+                except Exception as e:
+                    st.error(f"❌ Export failed: {str(e)}")
 
 # ============================================================================
 # DASHBOARD VIEW
@@ -3617,3 +3631,4 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
