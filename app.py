@@ -986,19 +986,28 @@ def show_password_assessment(logger, dry_run):
         
         with col_ex1:
             if st.button("Test: Weak", use_container_width=True):
-                password_input = "password123"
+                st.session_state.test_password = "password123"
+                st.rerun()
         
         with col_ex2:
             if st.button("Test: Moderate", use_container_width=True):
-                password_input = "Pass1234!"
+                st.session_state.test_password = "Pass1234!"
+                st.rerun()
         
         with col_ex3:
             if st.button("Test: Strong", use_container_width=True):
-                password_input = "MyP@ssw0rd2024!"
+                st.session_state.test_password = "MyP@ssw0rd2024!"
+                st.rerun()
         
         with col_ex4:
             if st.button("Test: Very Strong", use_container_width=True):
-                password_input = "C0ff33-M0unt@in-Sky!42"
+                st.session_state.test_password = "C0ff33-M0unt@in-Sky!42"
+                st.rerun()
+        
+        # Use test password if available
+        if 'test_password' in st.session_state:
+            password_input = st.session_state.test_password
+            del st.session_state.test_password  # Clear after use
         
         # Analyze button
         st.markdown("---")
@@ -1248,6 +1257,7 @@ def show_password_assessment(logger, dry_run):
         
         if st.button("🔐 Generate Hashes", type="primary", use_container_width=True):
             if password_hash:
+                st.markdown("---")
                 st.markdown("### 🔒 Generated Hashes")
                 
                 hashes = password_tester.simulate_hash(password_hash, "all")
@@ -1256,22 +1266,6 @@ def show_password_assessment(logger, dry_run):
                     if hash_type in hashes:
                         st.markdown(f"**{hash_type}:**")
                         st.code(hashes[hash_type], language="text")
-                        
-                        # Security notes
-                        if hash_type == "MD5":
-                            st.error("🚨 MD5 is cryptographically broken - DO NOT use for passwords!")
-                        elif hash_type == "SHA256":
-                            st.warning("⚠️ SHA256 alone is too fast - use with PBKDF2 or switch to bcrypt")
-                        elif hash_type == "bcrypt":
-                            st.success("✅ bcrypt is recommended for password hashing")
-                
-                st.info("""
-                **Why bcrypt?**
-                - Slow by design (prevents brute force)
-                - Automatic salting
-                - Configurable work factor
-                - Industry standard for password storage
-                """)
 
 # ============================================================================
 # PORT SCANNER VIEW
