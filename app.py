@@ -13,6 +13,7 @@ import math
 import bcrypt
 import requests
 from collections import defaultdict
+from urllib.parse import urljoin, urlparse
 
 # ============================================================================
 # PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
@@ -136,6 +137,185 @@ def load_custom_css():
     }
     </style>
     """, unsafe_allow_html=True)
+
+# ============================================================================
+# WEB DISCOVERY MODULE (DIRB-style)
+# ============================================================================
+class WebDiscovery:
+    def __init__(self, logger):
+        self.logger = logger
+        self.discovered = []
+        self.lock = threading.Lock()
+        self.checked_count = 0
+        self.stop_flag = False
+        
+        # Common directories/files to check
+        self.common_paths = [
+            "admin", "administrator", "login", "dashboard", "panel",
+            "backup", "backups", "old", "tmp", "temp", "test",
+            "api", "v1", "v2", "rest", "graphql",
+            "uploads", "files", "images", "assets", "static",
+            "config", "conf", "configuration", ".env", ".git",
+            "readme.txt", "robots.txt", "sitemap.xml", "security.txt",
+            "wp-admin", "wp-login", "phpmyadmin", "mysql",
+            "setup", "install", "installer", "upgrade",
+            ".htaccess", ".htpasswd", "web.config",
+            "user", "users", "account", "profile",
+            "download", "downloads", "docs", "documentation",
+            "log", "logs", "error_log", "access_log",
+            "db", "database", "sql", "data",
+            "include", "includes", "lib", "libs", "vendor",
+            "css", "js", "fonts", "media",
+            "payment", "checkout", "cart", "order"
+        ]
+        
+        # Common file extensions
+        self.extensions = [
+            "", ".php", ".html", ".htm", ".asp", ".aspx",
+            ".jsp", ".js", ".json", ".xml", ".txt",
+            ".bak", ".old", ".log", ".zip", ".tar.gz"
+        ]
+    
+    def check_path(self, base_url, path, timeout=5):
+        """Check if a path exists on target"""
+        try:
+            url = urljoin(base_url, path)
+            response = requests.head(url, timeout=timeout, allow_redirects=False)
+            
+            # Consider as found if not 404
+            if response.status_code != 404:
+                result = {
+                    "url": url,
+                    "path": path,
+                    "status_code": response.status_code,
+                    "size": response.headers.get('Content-Length', 'Unknown'),
+                    "content_type": response.headers.get('Content-Type', 'Unknown'),
+                    "server": response.headers.get('Server', 'Unknown')
+                }
+                
+                with self.lock:
+                    self.discovered.append(result)
+                    self.logger.log("WEB_DISCOVERY", "Found", f"{url} [{response.status_code}]")
+                
+                return result
+            
+        except requests.exceptions.Timeout:
+            pass
+        except Exception as e:
+            pass
+        finally:
+            with self.lock:
+                self.checked_count += 1
+        
+        return None
+    
+    def worker(self, base_url, path_queue, timeout):
+        """Worker thread for path checking"""
+        while not path_queue.empty() and not self.stop_flag:
+            path = path_queue.get()
+            self.check_path(base_url, path, timeout)
+            path_queue.task_done()
+            time.sleep(0.1)  # Rate limiting
+    
+    def scan_directories(self, base_url, wordlist="common", num_threads=10, timeout=5, extensions=True):
+        """Main directory scanning function"""
+        self.discovered = []
+        self.checked_count = 0
+        self.stop_flag = False
+        
+        # Normalize URL
+        if not base_url.startswith(('http://', 'https://')):
+            base_url = 'http://' + base_url
+        
+        if not base_url.endswith('/'):
+            base_url += '/'
+        
+        self.logger.log("WEB_DISCOVERY", "Scan Started", f"Target: {base_url}, Wordlist: {wordlist}, Threads: {num_threads}")
+        
+        # Build path list
+        paths = []
+        
+        if wordlist == "common":
+            paths = self.common_paths.copy()
+        elif wordlist == "minimal":
+            paths = self.common_paths[:15]  # First 15 only
+        elif wordlist == "extensive":
+            paths = self.common_paths.copy()
+            # Add with extensions
+            if extensions:
+                extended = []
+                for path in paths:
+                    for ext in self.extensions:
+                        extended.append(path + ext)
+                paths = extended
+        
+        # Add robots.txt and sitemap.xml (always check these)
+        if "robots.txt" not in paths:
+            paths.insert(0, "robots.txt")
+        if "sitemap.xml" not in paths:
+            paths.insert(1, "sitemap.xml")
+        
+        total_paths = len(paths)
+        
+        # Create queue
+        path_queue = Queue()
+        for path in paths:
+            path_queue.put(path)
+        
+        # Create threads
+        threads = []
+        for _ in range(min(num_threads, total_paths)):
+            t = threading.Thread(target=self.worker, args=(base_url, path_queue, timeout))
+            t.daemon = True
+            t.start()
+            threads.append(t)
+        
+        # Wait for completion
+        for t in threads:
+            t.join()
+        
+        self.logger.log("WEB_DISCOVERY", "Scan Completed", f"Checked {self.checked_count} paths, Found {len(self.discovered)} resources")
+        
+        return {
+            "base_url": base_url,
+            "wordlist": wordlist,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "paths_checked": self.checked_count,
+            "resources_found": len(self.discovered),
+            "discovered_paths": sorted(self.discovered, key=lambda x: x['status_code'])
+        }
+    
+    def check_subdomains(self, domain, timeout=3):
+        """Simple subdomain enumeration"""
+        common_subdomains = [
+            "www", "mail", "ftp", "admin", "test", "dev", "staging",
+            "api", "app", "mobile", "portal", "secure", "vpn",
+            "blog", "shop", "store", "support", "help", "docs"
+        ]
+        
+        found_subdomains = []
+        
+        for sub in common_subdomains:
+            subdomain = f"{sub}.{domain}"
+            try:
+                socket.gethostbyname(subdomain)
+                found_subdomains.append({
+                    "subdomain": subdomain,
+                    "status": "Active"
+                })
+                self.logger.log("WEB_DISCOVERY", "Subdomain Found", subdomain)
+            except socket.gaierror:
+                pass
+        
+        return found_subdomains
+    
+    def export_results(self, results, filename):
+        """Export discovery results to JSON"""
+        filepath = f"evidence/{filename}"
+        with open(filepath, 'w') as f:
+            json.dump(results, indent=2, fp=f)
+        self.logger.log("WEB_DISCOVERY", "Export", f"Results saved to {filepath}")
+        return filepath
 
 # ============================================================================
 # DOS/STRESS TESTING MODULE
@@ -1081,8 +1261,7 @@ def main():
         show_stress_test(logger, dry_run)
     
     elif module == "🌐 Web Discovery":
-        st.info("🚧 **Web Discovery Module** - Coming in Phase 3!")
-        st.markdown("This module will perform directory enumeration and subdomain discovery.")
+        show_web_discovery(logger, dry_run)
     
     elif module == "📦 Packet Capture":
         st.info("🚧 **Packet Capture Module** - Coming in Phase 3!")
@@ -1090,6 +1269,390 @@ def main():
     
     elif module == "📊 Logs & Reports":
         show_logs_reports(logger)
+
+# ============================================================================
+# WEB DISCOVERY VIEW
+# ============================================================================
+def show_web_discovery(logger, dry_run):
+    st.markdown("## 🌐 Web Discovery Module")
+    
+    logger.log("WEB_DISCOVERY", "Module Accessed", "User opened web discovery")
+    
+    st.markdown("""
+    <div style='background: rgba(138, 43, 226, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #8a2be2; margin-bottom: 20px;'>
+        <h4 style='color: #8a2be2; margin-top: 0;'>🔍 DIRB-Style Directory & Endpoint Discovery</h4>
+        <p style='color: #fff;'>
+            Discover hidden directories, files, API endpoints, and subdomains using automated
+            enumeration techniques. Essential for web application security assessment.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Mode selection
+    st.markdown("### 🎯 Discovery Mode")
+    
+    discovery_mode = st.radio(
+        "Choose discovery type:",
+        ["Directory Enumeration", "Subdomain Discovery"],
+        horizontal=True
+    )
+    
+    st.markdown("---")
+    
+    # Initialize web discovery
+    web_scanner = WebDiscovery(logger)
+    
+    # ========================================================================
+    # MODE 1: DIRECTORY ENUMERATION
+    # ========================================================================
+    if discovery_mode == "Directory Enumeration":
+        st.markdown("### 📂 Directory & File Discovery")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Target selection
+            target_preset = st.selectbox(
+                "🎯 Quick Select Target",
+                [
+                    "Custom (Enter Below)",
+                    "http://testphp.vulnweb.com",
+                    "http://demo.testfire.net",
+                    "http://localhost:8080",
+                    "http://127.0.0.1:5000"
+                ]
+            )
+            
+            if target_preset == "Custom (Enter Below)":
+                default_target = ""
+            else:
+                default_target = target_preset
+            
+            target_url = st.text_input(
+                "🌐 Target URL",
+                value=default_target,
+                help="Base URL to scan (e.g., http://example.com)",
+                placeholder="http://example.com"
+            )
+            
+            wordlist_type = st.selectbox(
+                "📚 Wordlist Size",
+                ["Minimal (15 paths)", "Common (50 paths)", "Extensive (200+ paths)"],
+                help="Larger wordlists take longer but find more"
+            )
+            
+            wordlist_map = {
+                "Minimal (15 paths)": "minimal",
+                "Common (50 paths)": "common",
+                "Extensive (200+ paths)": "extensive"
+            }
+            
+            wordlist = wordlist_map[wordlist_type]
+        
+        with col2:
+            num_threads = st.slider(
+                "🧵 Concurrent Threads",
+                min_value=1,
+                max_value=20,
+                value=10,
+                help="More threads = faster scan"
+            )
+            
+            timeout = st.slider(
+                "⏱️ Request Timeout (seconds)",
+                min_value=1,
+                max_value=10,
+                value=5,
+                help="Timeout for each request"
+            )
+            
+            check_extensions = st.checkbox(
+                "🔧 Check File Extensions",
+                value=True,
+                help="Also check .php, .html, .bak, etc."
+            )
+        
+        # Estimated time
+        path_count = {"minimal": 15, "common": 50, "extensive": 250}[wordlist]
+        if check_extensions and wordlist == "extensive":
+            path_count = 250 * 7  # Multiple extensions
+        
+        est_time = (path_count / num_threads) * (timeout * 0.3)
+        
+        st.info(f"""
+        **Scan Estimate:**
+        - Paths to check: ~{path_count}
+        - Estimated time: ~{est_time:.1f} seconds
+        - Rate: ~{num_threads * 10} requests/minute
+        """)
+        
+        # Control buttons
+        st.markdown("---")
+        
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            start_scan = st.button("🔍 Start Discovery", type="primary", use_container_width=True, disabled=not target_url)
+        
+        with col_btn2:
+            if st.button("🔄 Clear Results", use_container_width=True):
+                if 'discovery_results' in st.session_state:
+                    del st.session_state.discovery_results
+                st.rerun()
+        
+        # Execute scan
+        if start_scan:
+            if not target_url:
+                st.error("❌ Please enter a target URL!")
+                return
+            
+            # Validate target
+            if not dry_run:
+                approved_domains = [
+                    "testphp.vulnweb.com",
+                    "demo.testfire.net",
+                    "localhost",
+                    "127.0.0.1"
+                ]
+                
+                is_approved = any(domain in target_url.lower() for domain in approved_domains)
+                
+                if not is_approved:
+                    st.warning("""
+                    ⚠️ **Authorization Required**
+                    
+                    Directory enumeration on unauthorized targets may be illegal.
+                    Only scan systems you own or have permission to test.
+                    """)
+                    
+                    confirm = st.checkbox("✅ I have authorization to scan this target")
+                    if not confirm:
+                        logger.log("WEB_DISCOVERY", "Aborted", f"Unauthorized target: {target_url}", "WARNING")
+                        return
+            
+            # Progress display
+            st.markdown("---")
+            st.markdown("## 🔄 Scanning In Progress...")
+            
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            if dry_run:
+                # Simulate scan
+                for i in range(100):
+                    progress_bar.progress(i + 1)
+                    status_text.info(f"🧪 Dry run: Checking path {i}/{path_count}...")
+                    time.sleep(0.02)
+                
+                # Fake results
+                results = {
+                    "base_url": target_url,
+                    "wordlist": wordlist,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "paths_checked": path_count,
+                    "resources_found": 8,
+                    "discovered_paths": [
+                        {"url": f"{target_url}/admin", "path": "admin", "status_code": 200, "size": "4523", "content_type": "text/html"},
+                        {"url": f"{target_url}/login", "path": "login", "status_code": 200, "size": "2341", "content_type": "text/html"},
+                        {"url": f"{target_url}/api", "path": "api", "status_code": 301, "size": "Unknown", "content_type": "text/html"},
+                        {"url": f"{target_url}/robots.txt", "path": "robots.txt", "status_code": 200, "size": "127", "content_type": "text/plain"},
+                        {"url": f"{target_url}/sitemap.xml", "path": "sitemap.xml", "status_code": 200, "size": "1523", "content_type": "text/xml"},
+                        {"url": f"{target_url}/backup", "path": "backup", "status_code": 403, "size": "Unknown", "content_type": "text/html"},
+                        {"url": f"{target_url}/.git", "path": ".git", "status_code": 403, "size": "Unknown", "content_type": "text/html"},
+                        {"url": f"{target_url}/config.php.bak", "path": "config.php.bak", "status_code": 200, "size": "892", "content_type": "text/plain"}
+                    ]
+                }
+                
+                st.session_state.discovery_results = results
+                status_text.success("✅ Dry run completed!")
+                logger.log("WEB_DISCOVERY", "Dry Run", f"Simulated scan on {target_url}")
+            
+            else:
+                # Real scan
+                start_time = time.time()
+                
+                # Run scan
+                results = web_scanner.scan_directories(
+                    target_url,
+                    wordlist=wordlist,
+                    num_threads=num_threads,
+                    timeout=timeout,
+                    extensions=check_extensions
+                )
+                
+                # Update progress
+                while web_scanner.checked_count < path_count:
+                    progress = min(int((web_scanner.checked_count / path_count) * 100), 100)
+                    progress_bar.progress(progress)
+                    status_text.info(f"🔍 Scanning... {web_scanner.checked_count}/{path_count} paths checked")
+                    time.sleep(0.3)
+                    
+                    if progress >= 99:
+                        break
+                
+                progress_bar.progress(100)
+                st.session_state.discovery_results = results
+                status_text.success(f"✅ Scan completed! Found {results['resources_found']} resources")
+        
+        # Display results
+        if 'discovery_results' in st.session_state:
+            results = st.session_state.discovery_results
+            
+            st.markdown("---")
+            st.markdown("## 📊 Discovery Results")
+            
+            # Summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Paths Checked", results['paths_checked'])
+            
+            with col2:
+                st.metric("Resources Found", results['resources_found'], delta="✅")
+            
+            with col3:
+                discovery_rate = (results['resources_found'] / results['paths_checked'] * 100) if results['paths_checked'] > 0 else 0
+                st.metric("Discovery Rate", f"{discovery_rate:.1f}%")
+            
+            with col4:
+                st.metric("Target", results['base_url'].split('//')[1].split('/')[0])
+            
+            st.markdown("---")
+            
+            # Discovered paths
+            if results['resources_found'] > 0:
+                st.markdown("### 🔓 Discovered Resources")
+                
+                # Group by status code
+                status_groups = defaultdict(list)
+                for path in results['discovered_paths']:
+                    status_groups[path['status_code']].append(path)
+                
+                # Display by status code
+                for status_code in sorted(status_groups.keys()):
+                    paths = status_groups[status_code]
+                    
+                    # Status code color
+                    if status_code == 200:
+                        color = "🟢"
+                        status_name = "OK"
+                    elif status_code in [301, 302, 307]:
+                        color = "🟡"
+                        status_name = "Redirect"
+                    elif status_code == 403:
+                        color = "🟠"
+                        status_name = "Forbidden"
+                    elif status_code == 401:
+                        color = "🔴"
+                        status_name = "Unauthorized"
+                    else:
+                        color = "⚪"
+                        status_name = "Other"
+                    
+                    with st.expander(f"{color} **Status {status_code} ({status_name})** - {len(paths)} resource(s)", expanded=(status_code == 200)):
+                        for path in paths:
+                            col_a, col_b = st.columns([3, 1])
+                            
+                            with col_a:
+                                st.markdown(f"**URL:** `{path['url']}`")
+                                st.markdown(f"**Type:** {path['content_type']} | **Size:** {path['size']} bytes")
+                            
+                            with col_b:
+                                st.code(f"{status_code}", language="text")
+                
+                # Security findings
+                st.markdown("---")
+                st.markdown("### 🔒 Security Assessment")
+                
+                interesting_paths = []
+                critical_paths = []
+                
+                for path in results['discovered_paths']:
+                    path_lower = path['path'].lower()
+                    
+                    # Critical findings
+                    if any(x in path_lower for x in ['.git', '.env', '.bak', 'backup', 'config', 'password', 'admin', 'phpmyadmin']):
+                        critical_paths.append(path)
+                    # Interesting findings
+                    elif any(x in path_lower for x in ['api', 'login', 'upload', 'log', 'test', 'dev']):
+                        interesting_paths.append(path)
+                
+                if critical_paths:
+                    st.error(f"""
+                    🚨 **CRITICAL FINDINGS ({len(critical_paths)})**
+                    
+                    Found sensitive resources that should NOT be publicly accessible:
+                    """)
+                    for p in critical_paths:
+                        st.markdown(f"- `{p['path']}` [{p['status_code']}]")
+                
+                if interesting_paths:
+                    st.warning(f"""
+                    ⚠️ **INTERESTING FINDINGS ({len(interesting_paths)})**
+                    
+                    Found potentially sensitive endpoints:
+                    """)
+                    for p in interesting_paths[:5]:  # Show first 5
+                        st.markdown(f"- `{p['path']}` [{p['status_code']}]")
+                
+                if not critical_paths and not interesting_paths:
+                    st.success("✅ No obvious security issues detected")
+                
+            else:
+                st.warning("⚠️ No resources found. Target may be well-secured or non-existent.")
+            
+            # Export
+            st.markdown("---")
+            
+            if st.button("📥 Export Discovery Report (JSON)", use_container_width=True):
+                filename = f"discovery_{results['base_url'].replace('://', '_').replace('/', '_')}_9953_Moazam.json"
+                filepath = web_scanner.export_results(results, filename)
+                
+                with open(filepath, 'r') as f:
+                    st.download_button(
+                        label="⬇️ Download Report",
+                        data=f.read(),
+                        file_name=filename,
+                        mime="application/json"
+                    )
+                st.success(f"✅ Report exported: {filename}")
+    
+    # ========================================================================
+    # MODE 2: SUBDOMAIN DISCOVERY
+    # ========================================================================
+    elif discovery_mode == "Subdomain Discovery":
+        st.markdown("### 🌐 Subdomain Enumeration")
+        
+        st.info("""
+        **Subdomain Discovery**
+        
+        Finds active subdomains for a given domain (e.g., admin.example.com, api.example.com).
+        Uses DNS resolution to check common subdomain names.
+        """)
+        
+        domain_input = st.text_input(
+            "🌐 Domain (without subdomain)",
+            placeholder="example.com",
+            help="Enter domain only, no http:// or www"
+        )
+        
+        if st.button("🔍 Find Subdomains", type="primary", use_container_width=True):
+            if domain_input:
+                st.markdown("### 🔄 Checking Subdomains...")
+                
+                progress = st.progress(0)
+                
+                found = web_scanner.check_subdomains(domain_input)
+                
+                progress.progress(100)
+                
+                if found:
+                    st.success(f"✅ Found {len(found)} active subdomains!")
+                    
+                    for sub in found:
+                        st.markdown(f"🟢 **{sub['subdomain']}** - {sub['status']}")
+                else:
+                    st.warning("⚠️ No common subdomains found")
 
 # ============================================================================
 # DOS/STRESS TEST VIEW
