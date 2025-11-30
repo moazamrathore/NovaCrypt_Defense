@@ -1323,6 +1323,297 @@ class SecurityLogger:
         }
 
 # ============================================================================
+# REPORT GENERATOR - Word & PDF Reports
+# ============================================================================
+class ReportGenerator:
+    def __init__(self, logger):
+        self.logger = logger
+        
+    def generate_comprehensive_report(self, scan_results=None, password_results=None, 
+                                     stress_results=None, discovery_results=None, 
+                                     packet_results=None):
+        """Generate a comprehensive Word report with all test results"""
+        
+        from docx import Document
+        from docx.shared import Inches, Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        
+        # Create document
+        doc = Document()
+        
+        # ====================================================================
+        # TITLE PAGE
+        # ====================================================================
+        title = doc.add_heading('NovaCrypt Defense', 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        subtitle = doc.add_heading('Hybrid Hacking Toolkit - Security Assessment Report', level=2)
+        subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Team info
+        doc.add_paragraph()
+        team_info = doc.add_paragraph()
+        team_info.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        team_info.add_run('Team: NovaCrypt Defense\n').bold = True
+        team_info.add_run('Moazam | BSFT07-9953\n')
+        team_info.add_run('Abdullah | BSFT07-7465\n')
+        
+        # Date
+        date_para = doc.add_paragraph()
+        date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        date_para.add_run(f'\nReport Generated: {datetime.now().strftime("%B %d, %Y at %H:%M:%S")}\n').italic = True
+        
+        doc.add_page_break()
+        
+        # ====================================================================
+        # TABLE OF CONTENTS
+        # ====================================================================
+        doc.add_heading('Table of Contents', level=1)
+        doc.add_paragraph('1. Executive Summary')
+        doc.add_paragraph('2. Port Scanning Results')
+        doc.add_paragraph('3. Password Assessment Results')
+        doc.add_paragraph('4. Stress Testing Results')
+        doc.add_paragraph('5. Web Discovery Results')
+        doc.add_paragraph('6. Packet Capture Analysis')
+        doc.add_paragraph('7. Recommendations')
+        doc.add_paragraph('8. Conclusion')
+        
+        doc.add_page_break()
+        
+        # ====================================================================
+        # EXECUTIVE SUMMARY
+        # ====================================================================
+        doc.add_heading('1. Executive Summary', level=1)
+        
+        summary = doc.add_paragraph()
+        summary.add_run('Assessment Overview:\n').bold = True
+        summary.add_run(f'This security assessment was conducted on {datetime.now().strftime("%B %d, %Y")} ')
+        summary.add_run('using the NovaCrypt Defense Hybrid Hacking Toolkit. ')
+        summary.add_run('The assessment covered multiple security domains including network scanning, ')
+        summary.add_run('password security, stress testing, web discovery, and network traffic analysis.\n\n')
+        
+        # Summary stats
+        total_tests = sum([1 for r in [scan_results, password_results, stress_results, discovery_results, packet_results] if r])
+        summary.add_run(f'Total Modules Executed: {total_tests}\n')
+        summary.add_run(f'Report Date: {datetime.now().strftime("%Y-%m-%d")}\n')
+        
+        doc.add_page_break()
+        
+        # ====================================================================
+        # PORT SCANNING RESULTS
+        # ====================================================================
+        if scan_results:
+            doc.add_heading('2. Port Scanning Results', level=1)
+            
+            doc.add_paragraph(f"Target: {scan_results.get('target', 'N/A')}")
+            doc.add_paragraph(f"IP Address: {scan_results.get('ip', 'N/A')}")
+            doc.add_paragraph(f"Scan Time: {scan_results.get('scan_time', 'N/A')}")
+            doc.add_paragraph(f"Total Ports Scanned: {scan_results.get('total_ports_scanned', 0)}")
+            doc.add_paragraph(f"Open Ports Found: {scan_results.get('open_ports_found', 0)}")
+            
+            if scan_results.get('open_ports'):
+                doc.add_heading('Open Ports Details:', level=2)
+                
+                # Create table
+                table = doc.add_table(rows=1, cols=4)
+                table.style = 'Light Grid Accent 1'
+                
+                # Header
+                hdr_cells = table.rows[0].cells
+                hdr_cells[0].text = 'Port'
+                hdr_cells[1].text = 'Service'
+                hdr_cells[2].text = 'State'
+                hdr_cells[3].text = 'Banner'
+                
+                # Data
+                for port in scan_results['open_ports']:
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = str(port.get('port', ''))
+                    row_cells[1].text = port.get('service', '')
+                    row_cells[2].text = port.get('state', '')
+                    row_cells[3].text = port.get('banner', '')[:50]  # Truncate
+            
+            doc.add_page_break()
+        
+        # ====================================================================
+        # PASSWORD ASSESSMENT
+        # ====================================================================
+        if password_results:
+            doc.add_heading('3. Password Assessment Results', level=1)
+            
+            doc.add_paragraph(f"Strength Score: {password_results.get('strength_score', 0)}/100")
+            doc.add_paragraph(f"Category: {password_results.get('strength_category', 'N/A')}")
+            doc.add_paragraph(f"Password Length: {password_results.get('password_length', 0)} characters")
+            doc.add_paragraph(f"Entropy: {password_results.get('entropy_bits', 0)} bits")
+            doc.add_paragraph(f"Policy Compliant: {'Yes' if password_results.get('policy_compliant') else 'No'}")
+            doc.add_paragraph(f"Common Password: {'Yes' if password_results.get('is_common_password') else 'No'}")
+            
+            if password_results.get('recommendations'):
+                doc.add_heading('Recommendations:', level=2)
+                for rec in password_results['recommendations'][:5]:
+                    doc.add_paragraph(rec, style='List Bullet')
+            
+            doc.add_page_break()
+        
+        # ====================================================================
+        # STRESS TESTING
+        # ====================================================================
+        if stress_results:
+            doc.add_heading('4. Stress Testing Results', level=1)
+            
+            doc.add_paragraph(f"Target: {stress_results.get('target', 'N/A')}")
+            doc.add_paragraph(f"Test Duration: {stress_results.get('duration_seconds', 0)} seconds")
+            doc.add_paragraph(f"Concurrent Clients: {stress_results.get('num_clients', 0)}")
+            doc.add_paragraph(f"Total Requests: {stress_results.get('total_requests', 0)}")
+            doc.add_paragraph(f"Successful Requests: {stress_results.get('successful_requests', 0)}")
+            doc.add_paragraph(f"Failed Requests: {stress_results.get('failed_requests', 0)}")
+            doc.add_paragraph(f"Success Rate: {stress_results.get('success_rate_percent', 0)}%")
+            doc.add_paragraph(f"Requests/Second: {stress_results.get('requests_per_second', 0)}")
+            
+            if stress_results.get('latency_stats'):
+                doc.add_heading('Latency Statistics:', level=2)
+                latency = stress_results['latency_stats']
+                doc.add_paragraph(f"Average: {latency.get('average_ms', 0)} ms")
+                doc.add_paragraph(f"Minimum: {latency.get('min_ms', 0)} ms")
+                doc.add_paragraph(f"Maximum: {latency.get('max_ms', 0)} ms")
+                doc.add_paragraph(f"P95: {latency.get('p95_ms', 0)} ms")
+                doc.add_paragraph(f"P99: {latency.get('p99_ms', 0)} ms")
+            
+            doc.add_page_break()
+        
+        # ====================================================================
+        # WEB DISCOVERY
+        # ====================================================================
+        if discovery_results:
+            doc.add_heading('5. Web Discovery Results', level=1)
+            
+            doc.add_paragraph(f"Target: {discovery_results.get('base_url', 'N/A')}")
+            doc.add_paragraph(f"Paths Checked: {discovery_results.get('paths_checked', 0)}")
+            doc.add_paragraph(f"Resources Found: {discovery_results.get('resources_found', 0)}")
+            
+            if discovery_results.get('discovered_paths'):
+                doc.add_heading('Discovered Resources:', level=2)
+                for path in discovery_results['discovered_paths'][:20]:  # First 20
+                    doc.add_paragraph(f"{path.get('path', '')} - Status: {path.get('status_code', '')}", style='List Bullet')
+            
+            doc.add_page_break()
+        
+        # ====================================================================
+        # PACKET CAPTURE
+        # ====================================================================
+        if packet_results:
+            doc.add_heading('6. Packet Capture Analysis', level=1)
+            
+            doc.add_paragraph(f"Total Packets: {packet_results.get('total_packets', 0)}")
+            doc.add_paragraph(f"Total Bytes: {packet_results.get('total_bytes', 0)}")
+            
+            if packet_results.get('protocol_distribution'):
+                doc.add_heading('Protocol Distribution:', level=2)
+                for proto, count in packet_results['protocol_distribution'].items():
+                    doc.add_paragraph(f"{proto}: {count} packets", style='List Bullet')
+            
+            doc.add_page_break()
+        
+        # ====================================================================
+        # RECOMMENDATIONS
+        # ====================================================================
+        doc.add_heading('7. Security Recommendations', level=1)
+        
+        doc.add_paragraph('Based on the security assessment, the following recommendations are provided:', style='List Bullet')
+        doc.add_paragraph('Implement strong password policies across all systems', style='List Bullet')
+        doc.add_paragraph('Close unnecessary open ports to reduce attack surface', style='List Bullet')
+        doc.add_paragraph('Implement rate limiting to prevent DOS attacks', style='List Bullet')
+        doc.add_paragraph('Secure sensitive directories and files from public access', style='List Bullet')
+        doc.add_paragraph('Monitor network traffic for suspicious patterns', style='List Bullet')
+        doc.add_paragraph('Regular security assessments should be conducted quarterly', style='List Bullet')
+        
+        doc.add_page_break()
+        
+        # ====================================================================
+        # CONCLUSION
+        # ====================================================================
+        doc.add_heading('8. Conclusion', level=1)
+        
+        conclusion = doc.add_paragraph()
+        conclusion.add_run('This comprehensive security assessment has identified various aspects of the target systems. ')
+        conclusion.add_run('The findings and recommendations outlined in this report should be addressed to improve ')
+        conclusion.add_run('the overall security posture of the organization.\n\n')
+        conclusion.add_run('For any questions regarding this report, please contact the NovaCrypt Defense team.')
+        
+        # Save document
+        Path("evidence").mkdir(exist_ok=True)
+        filename = f"evidence/comprehensive_report_9953_Moazam_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        doc.save(filename)
+        
+        self.logger.log("REPORT", "Generated", f"Comprehensive report saved to {filename}")
+        
+        return filename
+    
+    def convert_to_pdf(self, docx_path):
+        """Convert Word document to PDF using reportlab"""
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.pdfgen import canvas
+            from docx import Document
+            
+            # Read DOCX
+            doc = Document(docx_path)
+            
+            # Create PDF
+            pdf_path = docx_path.replace('.docx', '.pdf')
+            c = canvas.Canvas(pdf_path, pagesize=letter)
+            width, height = letter
+            
+            y_position = height - 50
+            
+            # Add title
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(50, y_position, "NovaCrypt Defense - Security Report")
+            y_position -= 40
+            
+            # Add content
+            c.setFont("Helvetica", 10)
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    # Word wrap
+                    text = para.text
+                    if len(text) > 80:
+                        # Simple word wrap
+                        words = text.split()
+                        line = ""
+                        for word in words:
+                            if len(line + word) < 80:
+                                line += word + " "
+                            else:
+                                c.drawString(50, y_position, line)
+                                y_position -= 15
+                                line = word + " "
+                                
+                                if y_position < 50:
+                                    c.showPage()
+                                    y_position = height - 50
+                        
+                        if line:
+                            c.drawString(50, y_position, line)
+                            y_position -= 15
+                    else:
+                        c.drawString(50, y_position, text)
+                        y_position -= 15
+                    
+                    if y_position < 50:
+                        c.showPage()
+                        y_position = height - 50
+            
+            c.save()
+            self.logger.log("REPORT", "Converted", f"PDF saved to {pdf_path}")
+            return pdf_path
+            
+        except Exception as e:
+            self.logger.log("REPORT", "PDF Error", str(e), "ERROR")
+            return None
+
+
+# ============================================================================
 # IDENTITY & SAFETY MODULE
 # ============================================================================
 class IdentitySafety:
@@ -3647,7 +3938,7 @@ def show_logs_reports(logger):
     logger.log("LOGS", "Viewed", "User accessed logs and reports")
     
     # Tabs for different views
-    tab1, tab2, tab3 = st.tabs(["📝 Live Logs", "🔒 Integrity Check", "📥 Export"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Live Logs", "🔒 Integrity Check", "📥 Export", "📄 Generate Report"])
     
     with tab1:
         st.markdown("### 📝 Real-Time Security Logs")
@@ -3709,10 +4000,106 @@ def show_logs_reports(logger):
                 logger.log("EXPORT", "Report exported", "JSON format")
         
         st.info("📌 **Note:** PDF/Word reports will be generated automatically after completing assessments")
+    
+    with tab4:
+        st.markdown("### 📄 Generate Comprehensive Report")
+        
+        st.info("""
+        Generate a professional Word/PDF report containing all test results.
+        
+        The report includes:
+        - Executive Summary
+        - All module results (Port Scan, Password, Stress, Discovery, Packet)
+        - Security recommendations
+        - Professional formatting
+        """)
+        
+        # Check what results are available
+        available_results = []
+        if 'scan_results' in st.session_state:
+            available_results.append("✅ Port Scanner Results")
+        if 'password_results' in st.session_state:
+            available_results.append("✅ Password Assessment Results")
+        if 'stress_results' in st.session_state:
+            available_results.append("✅ Stress Test Results")
+        if 'discovery_results' in st.session_state:
+            available_results.append("✅ Web Discovery Results")
+        if 'capture_results' in st.session_state:
+            available_results.append("✅ Packet Capture Results")
+        
+        if available_results:
+            st.markdown("**Available Data:**")
+            for result in available_results:
+                st.markdown(f"- {result}")
+        else:
+            st.warning("⚠️ No test results available yet. Run some tests first!")
+        
+        col_r1, col_r2 = st.columns(2)
+        
+        with col_r1:
+            if st.button("📄 Generate Word Report (.docx)", use_container_width=True):
+                report_gen = ReportGenerator(logger)
+                
+                with st.spinner("Generating report..."):
+                    try:
+                        filename = report_gen.generate_comprehensive_report(
+                            scan_results=st.session_state.get('scan_results'),
+                            password_results=st.session_state.get('password_results'),
+                            stress_results=st.session_state.get('stress_results'),
+                            discovery_results=st.session_state.get('discovery_results'),
+                            packet_results=st.session_state.get('capture_results')
+                        )
+                        
+                        with open(filename, 'rb') as f:
+                            st.download_button(
+                                label="⬇️ Download Word Report",
+                                data=f.read(),
+                                file_name=os.path.basename(filename),
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
+                        
+                        st.success(f"✅ Report generated: {filename}")
+                    except Exception as e:
+                        st.error(f"❌ Error generating report: {str(e)}")
+        
+        with col_r2:
+            if st.button("📕 Generate PDF Report (.pdf)", use_container_width=True):
+                report_gen = ReportGenerator(logger)
+                
+                with st.spinner("Generating PDF..."):
+                    try:
+                        # First generate DOCX
+                        docx_filename = report_gen.generate_comprehensive_report(
+                            scan_results=st.session_state.get('scan_results'),
+                            password_results=st.session_state.get('password_results'),
+                            stress_results=st.session_state.get('stress_results'),
+                            discovery_results=st.session_state.get('discovery_results'),
+                            packet_results=st.session_state.get('capture_results')
+                        )
+                        
+                        # Convert to PDF
+                        pdf_filename = report_gen.convert_to_pdf(docx_filename)
+                        
+                        if pdf_filename:
+                            with open(pdf_filename, 'rb') as f:
+                                st.download_button(
+                                    label="⬇️ Download PDF Report",
+                                    data=f.read(),
+                                    file_name=os.path.basename(pdf_filename),
+                                    mime="application/pdf"
+                                )
+                            
+                            st.success(f"✅ PDF generated: {pdf_filename}")
+                        else:
+                            st.error("❌ PDF conversion failed")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Error generating PDF: {str(e)}")
 
 # ============================================================================
 # RUN THE APP
 # ============================================================================
 if __name__ == "__main__":
     main()
+
 
