@@ -1844,18 +1844,6 @@ def show_packet_capture(logger, dry_run):
     </div>
     """, unsafe_allow_html=True)
     
-    st.info("""
-    **📌 Note:** This is a simulated packet capture for demonstration purposes.
-    
-    In production environments:
-    - Use **Scapy** or **pyshark** for real packet capture
-    - Requires **root/admin privileges**
-    - Works on actual network interfaces (eth0, wlan0, etc.)
-    - Captures real network traffic
-    
-    This simulation demonstrates the interface and analysis capabilities.
-    """)
-    
     st.markdown("---")
     
     # Configuration
@@ -4089,5 +4077,6 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
 
 
