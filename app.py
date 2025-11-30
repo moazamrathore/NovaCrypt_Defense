@@ -15,6 +15,8 @@ import requests
 from collections import defaultdict
 from urllib.parse import urljoin, urlparse
 import random
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 
@@ -3713,6 +3715,7 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
 
 
 
