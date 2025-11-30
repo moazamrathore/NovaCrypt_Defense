@@ -3441,34 +3441,9 @@ def show_dashboard(logger, dry_run):
         - 💾 **Persistent Storage:** All logs saved to `evidence/` directory
         - 🔍 **Audit Ready:** Logs formatted for security audits
         
-        **📌 File Naming Convention:**
-        All outputs include registration numbers (e.g., `scan_9953_Moazam.json`)
         """)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Module Status Overview
-    st.markdown("### 📊 Module Status Overview")
-    
-    status_col1, status_col2, status_col3, status_col4, status_col5, status_col6 = st.columns(6)
-    
-    with status_col1:
-        st.metric("Port Scanner", "✅ Ready", delta="Active")
-    
-    with status_col2:
-        st.metric("Password Test", "✅ Ready", delta="Active")
-    
-    with status_col3:
-        st.metric("Stress Test", "✅ Ready", delta="Active")
-    
-    with status_col4:
-        st.metric("Web Discovery", "✅ Ready", delta="Active")
-    
-    with status_col5:
-        st.metric("Packet Capture", "✅ Ready", delta="Active")
-    
-    with status_col6:
-        st.metric("Reports", "✅ Ready", delta="Active")
     
     # Quick Start Guide with more details
     with st.expander("📖 Quick Start Guide - How to Use This Toolkit"):
@@ -3481,9 +3456,7 @@ def show_dashboard(logger, dry_run):
         - If files are missing, they'll be created automatically with team information
         
         #### **Step 2: Select Your Module** 🎯
-        You can select a module in **two ways**:
-        - **Option A:** Click any module card on the dashboard (above)
-        - **Option B:** Use the dropdown in the sidebar under "Select Module"
+        You can select a module using the dropdown in the sidebar under "Select Module"
         
         #### **Step 3: Configure Testing Parameters** ⚙️
         Each module has specific configuration options:
