@@ -1551,31 +1551,39 @@ def show_packet_capture(logger, dry_run):
         status_text = st.empty()
         packet_counter = st.empty()
         
-        # Capture traffic
+        # Capture traffic directly (no threading for Streamlit)
         start_time = time.time()
         
-        # Start capture in thread
-        capture_thread = threading.Thread(
-            target=lambda: setattr(st.session_state, 'capture_results',
-                                  packet_capturer.capture_traffic(capture_duration, protocol_filter))
-        )
-        capture_thread.start()
-        
-        # Update progress
-        while capture_thread.is_alive():
-            elapsed = time.time() - start_time
-            progress = min(int((elapsed / capture_duration) * 100), 100)
+        for i in range(capture_duration):
+            progress = int(((i + 1) / capture_duration) * 100)
             progress_bar.progress(progress)
             
-            status_text.info(f"📡 Capturing... {elapsed:.1f}s / {capture_duration}s")
-            packet_counter.metric("Packets Captured", len(packet_capturer.packets))
+            elapsed = i + 1
+            status_text.info(f"📡 Capturing... {elapsed}s / {capture_duration}s")
             
-            time.sleep(0.5)
+            # Generate packets for this second
+            packets_per_second = random.randint(8, 12)
+            for _ in range(packets_per_second):
+                if protocol_filter == "All":
+                    packet = packet_capturer.generate_sample_packet("Random")
+                else:
+                    packet = packet_capturer.generate_sample_packet(protocol_filter)
+                
+                packet_capturer.packets.append(packet)
+            
+            packet_counter.metric("Packets Captured", len(packet_capturer.packets))
+            time.sleep(1)
         
-        capture_thread.join()
+        # Analyze results
+        results = packet_capturer.analyze_traffic()
+        st.session_state.capture_results = results
         
         progress_bar.progress(100)
-        status_text.success("✅ Capture completed!")
+        status_text.success(f"✅ Capture completed! Captured {len(packet_capturer.packets)} packets")
+        
+        # Force rerun to show results
+        time.sleep(1)
+        st.rerun()
     
     # Display results
     if 'capture_results' in st.session_state:
