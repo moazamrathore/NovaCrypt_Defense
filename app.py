@@ -4,6 +4,11 @@ import json
 from datetime import datetime
 import hashlib
 from pathlib import Path
+import socket
+import threading
+from queue import Queue
+import time
+import re
 
 # ============================================================================
 # PAGE CONFIGURATION - MUST BE FIRST STREAMLIT COMMAND
@@ -127,6 +132,210 @@ def load_custom_css():
     }
     </style>
     """, unsafe_allow_html=True)
+
+# ============================================================================
+# PORT SCANNER MODULE
+# ============================================================================
+class PortScanner:
+    def __init__(self, logger):
+        self.logger = logger
+        self.open_ports = []
+        self.lock = threading.Lock()
+        self.scan_progress = 0
+        self.total_ports = 0
+        
+        # Common ports and their services
+        self.common_ports = {
+            21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS",
+            80: "HTTP", 110: "POP3", 143: "IMAP", 443: "HTTPS", 445: "SMB",
+            3306: "MySQL", 3389: "RDP", 5432: "PostgreSQL", 5900: "VNC",
+            8080: "HTTP-Proxy", 8443: "HTTPS-Alt", 27017: "MongoDB"
+        }
+    
+    def resolve_target(self, target):
+        """Resolve hostname to IP address"""
+        try:
+            ip = socket.gethostbyname(target)
+            self.logger.log("PORT_SCAN", "DNS Resolution", f"{target} -> {ip}")
+            return ip
+        except socket.gaierror:
+            self.logger.log("PORT_SCAN", "DNS Error", f"Cannot resolve {target}", "ERROR")
+            return None
+    
+    def scan_port(self, target, port, timeout=1):
+        """Scan a single port"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((target, port))
+            
+            if result == 0:
+                # Port is open, try to grab banner
+                banner = self.grab_banner(sock, port)
+                service = self.common_ports.get(port, "Unknown")
+                
+                with self.lock:
+                    self.open_ports.append({
+                        "port": port,
+                        "service": service,
+                        "banner": banner,
+                        "state": "open"
+                    })
+                
+                self.logger.log("PORT_SCAN", f"Open Port Found", f"Port {port} ({service})")
+            
+            sock.close()
+        except Exception as e:
+            pass
+        finally:
+            with self.lock:
+                self.scan_progress += 1
+    
+    def grab_banner(self, sock, port):
+        """Attempt to grab service banner"""
+        try:
+            sock.settimeout(2)
+            
+            # Send different probes based on port
+            if port == 80 or port == 8080:
+                sock.send(b"GET / HTTP/1.1\r\nHost: target\r\n\r\n")
+            elif port == 21:
+                pass  # FTP sends banner automatically
+            elif port == 22:
+                pass  # SSH sends banner automatically
+            else:
+                sock.send(b"\r\n")
+            
+            banner = sock.recv(1024).decode('utf-8', errors='ignore').strip()
+            return banner[:200] if banner else "No banner"
+        except:
+            return "No banner"
+    
+    def worker(self, target, port_queue, timeout):
+        """Worker thread for scanning"""
+        while not port_queue.empty():
+            port = port_queue.get()
+            self.scan_port(target, port, timeout)
+            port_queue.task_done()
+    
+    def scan(self, target, port_range, num_threads=50, timeout=1):
+        """Main scan function"""
+        self.open_ports = []
+        self.scan_progress = 0
+        
+        # Resolve target
+        ip = self.resolve_target(target)
+        if not ip:
+            return None
+        
+        # Parse port range
+        if '-' in port_range:
+            start, end = map(int, port_range.split('-'))
+            ports = range(start, end + 1)
+        elif ',' in port_range:
+            ports = [int(p.strip()) for p in port_range.split(',')]
+        else:
+            ports = [int(port_range)]
+        
+        self.total_ports = len(ports)
+        
+        self.logger.log("PORT_SCAN", "Scan Started", f"Target: {target} ({ip}), Ports: {len(ports)}, Threads: {num_threads}")
+        
+        # Create queue and add ports
+        port_queue = Queue()
+        for port in ports:
+            port_queue.put(port)
+        
+        # Create and start threads
+        threads = []
+        for _ in range(min(num_threads, len(ports))):
+            t = threading.Thread(target=self.worker, args=(ip, port_queue, timeout))
+            t.daemon = True
+            t.start()
+            threads.append(t)
+        
+        # Wait for all threads to complete
+        for t in threads:
+            t.join()
+        
+        self.logger.log("PORT_SCAN", "Scan Completed", f"Found {len(self.open_ports)} open ports")
+        
+        return {
+            "target": target,
+            "ip": ip,
+            "scan_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_ports_scanned": self.total_ports,
+            "open_ports_found": len(self.open_ports),
+            "open_ports": sorted(self.open_ports, key=lambda x: x['port'])
+        }
+    
+    def export_json(self, results, filename):
+        """Export results to JSON"""
+        filepath = f"evidence/{filename}"
+        with open(filepath, 'w') as f:
+            json.dump(results, indent=2, fp=f)
+        self.logger.log("PORT_SCAN", "Export", f"Results saved to {filepath}")
+        return filepath
+    
+    def export_html(self, results, filename):
+        """Export results to HTML"""
+        html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Port Scan Results - {results['target']}</title>
+    <style>
+        body {{ font-family: 'Courier New', monospace; background: #1a1a2e; color: #00fff5; padding: 20px; }}
+        h1 {{ color: #00fff5; text-shadow: 0 0 10px #00fff5; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+        th {{ background: #16213e; color: #00fff5; padding: 12px; text-align: left; border: 1px solid #00fff5; }}
+        td {{ background: #0f0c29; padding: 10px; border: 1px solid #00fff5; }}
+        .open {{ color: #00ff7f; font-weight: bold; }}
+        .summary {{ background: rgba(0,255,245,0.1); padding: 15px; border: 1px solid #00fff5; border-radius: 5px; margin: 20px 0; }}
+    </style>
+</head>
+<body>
+    <h1>🔍 Port Scan Results</h1>
+    <div class="summary">
+        <p><strong>Target:</strong> {results['target']} ({results['ip']})</p>
+        <p><strong>Scan Time:</strong> {results['scan_time']}</p>
+        <p><strong>Ports Scanned:</strong> {results['total_ports_scanned']}</p>
+        <p><strong>Open Ports Found:</strong> {results['open_ports_found']}</p>
+    </div>
+    
+    <h2>Open Ports Details</h2>
+    <table>
+        <tr>
+            <th>Port</th>
+            <th>Service</th>
+            <th>State</th>
+            <th>Banner</th>
+        </tr>
+"""
+        for port_info in results['open_ports']:
+            html += f"""
+        <tr>
+            <td>{port_info['port']}</td>
+            <td>{port_info['service']}</td>
+            <td class="open">{port_info['state']}</td>
+            <td>{port_info['banner']}</td>
+        </tr>
+"""
+        
+        html += """
+    </table>
+    <p style="text-align: center; color: #666; margin-top: 40px;">
+        <small>Generated by NovaCrypt Defense - Moazam (9953) & Abdullah (7465)</small>
+    </p>
+</body>
+</html>
+"""
+        
+        filepath = f"evidence/{filename}"
+        with open(filepath, 'w') as f:
+            f.write(html)
+        self.logger.log("PORT_SCAN", "Export", f"HTML report saved to {filepath}")
+        return filepath
 
 # ============================================================================
 # LOGGER CLASS - Centralized Logging with SHA-256 Integrity
@@ -392,8 +601,7 @@ def main():
         show_dashboard(logger, dry_run)
     
     elif module == "🔍 Port Scanner":
-        st.info("🚧 **Port Scanner Module** - Coming in Phase 2!")
-        st.markdown("This module will perform TCP port scanning with banner grabbing.")
+        show_port_scanner(logger, dry_run)
     
     elif module == "🔑 Password Assessment":
         st.info("🚧 **Password Assessment Module** - Coming in Phase 2!")
@@ -413,6 +621,276 @@ def main():
     
     elif module == "📊 Logs & Reports":
         show_logs_reports(logger)
+
+# ============================================================================
+# PORT SCANNER VIEW
+# ============================================================================
+def show_port_scanner(logger, dry_run):
+    st.markdown("## 🔍 Port Scanner Module")
+    
+    logger.log("PORT_SCAN", "Module Accessed", "User opened port scanner")
+    
+    st.markdown("""
+    <div style='background: rgba(0, 191, 255, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00bfff; margin-bottom: 20px;'>
+        <h4 style='color: #00bfff; margin-top: 0;'>🎯 Professional TCP Port Scanner</h4>
+        <p style='color: #fff;'>
+            Multi-threaded port scanning with banner grabbing and service detection.
+            Scan real-world targets to identify open ports and running services.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Configuration Section
+    st.markdown("### ⚙️ Scan Configuration")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        target = st.text_input(
+            "🎯 Target (IP or Domain)",
+            value="scanme.nmap.org",
+            help="Enter IP address or domain name to scan"
+        )
+        
+        scan_type = st.selectbox(
+            "📊 Scan Type",
+            ["Common Ports (Top 17)", "Quick Scan (1-1024)", "Full Scan (1-65535)", "Custom Range"]
+        )
+        
+        if scan_type == "Custom Range":
+            port_range = st.text_input(
+                "🔢 Port Range",
+                value="80,443,8080",
+                help="Format: '80' or '1-100' or '80,443,8080'"
+            )
+        elif scan_type == "Common Ports (Top 17)":
+            port_range = "21,22,23,25,53,80,110,143,443,445,3306,3389,5432,5900,8080,8443,27017"
+        elif scan_type == "Quick Scan (1-1024)":
+            port_range = "1-1024"
+        else:  # Full Scan
+            port_range = "1-65535"
+    
+    with col2:
+        num_threads = st.slider(
+            "🧵 Number of Threads",
+            min_value=10,
+            max_value=200,
+            value=50,
+            step=10,
+            help="More threads = faster scan, but may trigger IDS"
+        )
+        
+        timeout = st.slider(
+            "⏱️ Timeout (seconds)",
+            min_value=0.5,
+            max_value=5.0,
+            value=1.0,
+            step=0.5,
+            help="Connection timeout per port"
+        )
+        
+        st.info(f"""
+        **Estimated Scan Time:**  
+        {len(port_range.replace('-', ',').split(','))} ports ÷ {num_threads} threads ≈ {round(len(port_range.replace('-', ',').split(',')) / num_threads * timeout, 1)}s
+        """)
+    
+    # Scan Button
+    st.markdown("---")
+    
+    col_btn1, col_btn2, col_btn3 = st.columns([2, 1, 1])
+    
+    with col_btn1:
+        if dry_run:
+            st.warning("🧪 Dry run mode - simulation only")
+        
+        start_scan = st.button("🚀 Start Port Scan", type="primary", use_container_width=True)
+    
+    with col_btn2:
+        if st.button("🔄 Clear Results", use_container_width=True):
+            if 'scan_results' in st.session_state:
+                del st.session_state.scan_results
+            st.rerun()
+    
+    with col_btn3:
+        show_help = st.button("❓ Help", use_container_width=True)
+    
+    if show_help:
+        with st.expander("📖 Port Scanner Help", expanded=True):
+            st.markdown("""
+            ### How to Use Port Scanner
+            
+            **Target Selection:**
+            - Enter IP address (e.g., `192.168.1.1`)
+            - Enter domain name (e.g., `scanme.nmap.org`)
+            - Approved targets: scanme.nmap.org, testphp.vulnweb.com, localhost
+            
+            **Scan Types:**
+            - **Common Ports:** Scans 17 most common services (fastest)
+            - **Quick Scan:** Ports 1-1024 (standard services)
+            - **Full Scan:** All 65535 ports (very slow)
+            - **Custom Range:** Specify exact ports
+            
+            **Performance Tips:**
+            - More threads = faster scan
+            - Lower timeout = faster but may miss slow services
+            - Use common ports for quick recon
+            
+            **Ethical Guidelines:**
+            - Only scan authorized targets
+            - Avoid aggressive scanning (high threads)
+            - Do not scan during peak hours
+            """)
+    
+    # Execute Scan
+    if start_scan:
+        if not target:
+            st.error("❌ Please enter a target!")
+            return
+        
+        # Validation
+        if not dry_run:
+            # Check if target is in approved list
+            consent_targets = ["scanme.nmap.org", "testphp.vulnweb.com", "localhost", "127.0.0.1", "example.com"]
+            is_approved = any(approved in target.lower() for approved in consent_targets)
+            
+            if not is_approved:
+                st.warning(f"⚠️ Target '{target}' is not in the approved list. Ensure you have authorization!")
+                confirm = st.checkbox("✅ I confirm I have authorization to scan this target")
+                if not confirm:
+                    st.error("❌ Scan aborted - authorization required")
+                    logger.log("PORT_SCAN", "Aborted", f"Unauthorized target: {target}", "WARNING")
+                    return
+        
+        # Initialize scanner
+        scanner = PortScanner(logger)
+        
+        # Progress display
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        if dry_run:
+            # Simulate scan
+            status_text.info("🧪 Dry run mode - simulating scan...")
+            for i in range(100):
+                time.sleep(0.02)
+                progress_bar.progress(i + 1)
+            
+            # Fake results
+            results = {
+                "target": target,
+                "ip": "simulation",
+                "scan_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total_ports_scanned": len(port_range.split(',')),
+                "open_ports_found": 3,
+                "open_ports": [
+                    {"port": 80, "service": "HTTP", "state": "open", "banner": "Apache/2.4.41 (Simulated)"},
+                    {"port": 443, "service": "HTTPS", "state": "open", "banner": "nginx/1.18.0 (Simulated)"},
+                    {"port": 22, "service": "SSH", "state": "open", "banner": "OpenSSH 8.2 (Simulated)"}
+                ]
+            }
+            st.session_state.scan_results = results
+            status_text.success("✅ Dry run completed!")
+            logger.log("PORT_SCAN", "Dry Run", f"Simulated scan on {target}")
+        else:
+            # Real scan
+            status_text.info(f"🔍 Scanning {target}... Please wait...")
+            
+            # Run scan in background and update progress
+            results = scanner.scan(target, port_range, num_threads, timeout)
+            
+            if results:
+                # Update progress bar based on actual progress
+                for i in range(100):
+                    progress = min(int((scanner.scan_progress / scanner.total_ports) * 100), 100)
+                    progress_bar.progress(progress)
+                    if progress >= 100:
+                        break
+                    time.sleep(0.1)
+                
+                st.session_state.scan_results = results
+                status_text.success(f"✅ Scan completed! Found {results['open_ports_found']} open ports")
+            else:
+                status_text.error("❌ Scan failed - could not resolve target")
+                return
+    
+    # Display Results
+    if 'scan_results' in st.session_state:
+        results = st.session_state.scan_results
+        
+        st.markdown("---")
+        st.markdown("## 📊 Scan Results")
+        
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Target", results['target'])
+        
+        with col2:
+            st.metric("IP Address", results['ip'])
+        
+        with col3:
+            st.metric("Ports Scanned", results['total_ports_scanned'])
+        
+        with col4:
+            st.metric("Open Ports", results['open_ports_found'], delta="Found")
+        
+        st.markdown("---")
+        
+        # Detailed results
+        if results['open_ports_found'] > 0:
+            st.markdown("### 🔓 Open Ports Details")
+            
+            for port_info in results['open_ports']:
+                with st.expander(f"**Port {port_info['port']}** - {port_info['service']} ({port_info['state'].upper()})"):
+                    col_a, col_b = st.columns([1, 3])
+                    
+                    with col_a:
+                        st.markdown(f"""
+                        **Port:** {port_info['port']}  
+                        **Service:** {port_info['service']}  
+                        **State:** {port_info['state']}
+                        """)
+                    
+                    with col_b:
+                        st.markdown("**Banner / Version:**")
+                        st.code(port_info['banner'], language="text")
+        else:
+            st.warning("⚠️ No open ports found. The target may be protected by a firewall.")
+        
+        # Export options
+        st.markdown("---")
+        st.markdown("### 📥 Export Results")
+        
+        col_exp1, col_exp2 = st.columns(2)
+        
+        with col_exp1:
+            if st.button("📄 Export to JSON", use_container_width=True):
+                filename = f"portscan_{results['target'].replace('.', '_')}_9953_Moazam.json"
+                filepath = scanner.export_json(results, filename)
+                
+                with open(filepath, 'r') as f:
+                    st.download_button(
+                        label="⬇️ Download JSON",
+                        data=f.read(),
+                        file_name=filename,
+                        mime="application/json"
+                    )
+                st.success(f"✅ Exported to {filename}")
+        
+        with col_exp2:
+            if st.button("📊 Export to HTML", use_container_width=True):
+                filename = f"portscan_{results['target'].replace('.', '_')}_9953_Moazam.html"
+                filepath = scanner.export_html(results, filename)
+                
+                with open(filepath, 'r') as f:
+                    st.download_button(
+                        label="⬇️ Download HTML",
+                        data=f.read(),
+                        file_name=filename,
+                        mime="text/html"
+                    )
+                st.success(f"✅ Exported to {filename}")
 
 # ============================================================================
 # DASHBOARD VIEW
