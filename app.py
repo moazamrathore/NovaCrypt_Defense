@@ -2557,12 +2557,7 @@ def show_stress_test(logger, dry_run):
         except Exception as e:
             st.warning(f"⚠️ Could not generate graphs: {str(e)}")
         
-        
-        
         st.markdown("---")
-        
-        # Performance metrics
-        col_p1, col_p2 = st.columns(2)
         
         # Performance metrics
         col_p1, col_p2 = st.columns(2)
@@ -3718,5 +3713,6 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
 
 
