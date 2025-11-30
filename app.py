@@ -3275,14 +3275,19 @@ def show_dashboard(logger, dry_run):
     
     # Welcome message with more details
     st.markdown("""
-    <div style='background: rgba(0, 255, 245, 0.1); padding: 25px; border-radius: 10px; border: 1px solid #00fff5;'>
-        <h3 style='color: #00fff5; margin-top: 0;'>⚡ Welcome to NovaCrypt Defense</h3>
-        <p style='color: #fff; font-size: 1.1rem; line-height: 1.6;'>
-            A comprehensive Python-based security toolkit designed for PayBuddy FinTech security testing.
-            This suite provides <strong>6 powerful modules</strong> for authorized penetration testing and vulnerability assessment.
+    <div style='background: rgba(0, 255, 245, 0.1); padding: 30px; border-radius: 15px; border: 2px solid #00fff5; margin-bottom: 30px; text-align: center;'>
+        <h2 style='color: #00fff5; margin-top: 0; font-size: 2.5rem;'>⚡ Welcome to NovaCrypt Defense</h2>
+        <p style='color: #fff; font-size: 1.2rem; line-height: 1.8; margin: 20px 0;'>
+            NovaCrypt Defense is a comprehensive Python-based security toolkit designed for <strong>PayBuddy FinTech</strong> security testing. 
+            This professional suite provides <strong style='color: #00fff5;'>6 powerful modules</strong> for authorized penetration testing, 
+            vulnerability assessment, and security analysis.
         </p>
-        <p style='color: #00bfff; margin-bottom: 0;'>
-            📌 <strong>Select any module below or use the sidebar</strong> to begin your security assessment.
+        <p style='color: #00bfff; font-size: 1.1rem; margin: 20px 0;'>
+            Built entirely in Python without external Kali tools, our toolkit delivers enterprise-grade security testing 
+            with real-time monitoring, comprehensive logging, and professional reporting capabilities.
+        </p>
+        <p style='color: #00ff7f; font-size: 1rem; margin-top: 25px;'>
+            📌 <strong>Select any module below to begin your authorized security assessment</strong>
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -3297,110 +3302,38 @@ def show_dashboard(logger, dry_run):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("🔍 Port Scanner", key="btn_port", use_container_width=True):
+        if st.button("🔍 Port Scanner", key="btn_port_card", use_container_width=True, help="Click to open Port Scanner module"):
             st.session_state.selected_module = "🔍 Port Scanner"
             st.rerun()
-        st.markdown("""
-        <div style='background: rgba(0, 191, 255, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00bfff; min-height: 180px;'>
-            <h4 style='color: #00bfff;'>🔍 Port Scanner</h4>
-            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
-                <strong>Capabilities:</strong><br>
-                • Multi-threaded TCP port scanning<br>
-                • Service detection & banner grabbing<br>
-                • Export results to JSON/HTML<br>
-                • Identify open ports & running services
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
     
     with col2:
-        if st.button("🔑 Password Testing", key="btn_pass", use_container_width=True):
+        if st.button("🔑 Password Testing", key="btn_pass_card", use_container_width=True, help="Click to open Password Assessment module"):
             st.session_state.selected_module = "🔑 Password Assessment"
             st.rerun()
-        st.markdown("""
-        <div style='background: rgba(0, 255, 127, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #00ff7f; min-height: 180px;'>
-            <h4 style='color: #00ff7f;'>🔑 Password Testing</h4>
-            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
-                <strong>Capabilities:</strong><br>
-                • Password strength analysis<br>
-                • Policy compliance checking<br>
-                • Entropy calculation (Shannon)<br>
-                • Hash simulation (MD5/SHA256/bcrypt)
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
     
     with col3:
-        if st.button("💥 Stress Testing", key="btn_dos", use_container_width=True):
+        if st.button("💥 Stress Testing", key="btn_dos_card", use_container_width=True, help="Click to open DOS/Stress Test module"):
             st.session_state.selected_module = "💥 DOS/Stress Test"
             st.rerun()
-        st.markdown("""
-        <div style='background: rgba(255, 165, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ffa500; min-height: 180px;'>
-            <h4 style='color: #ffa500;'>💥 Stress Testing</h4>
-            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
-                <strong>Capabilities:</strong><br>
-                • Controlled DOS simulation<br>
-                • HTTP flood testing (max 200 clients)<br>
-                • Real-time latency monitoring<br>
-                • Performance graphs & reports
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
     col4, col5, col6 = st.columns(3)
     
     with col4:
-        if st.button("🌐 Web Discovery", key="btn_web", use_container_width=True):
+        if st.button("🌐 Web Discovery", key="btn_web_card", use_container_width=True, help="Click to open Web Discovery module"):
             st.session_state.selected_module = "🌐 Web Discovery"
             st.rerun()
-        st.markdown("""
-        <div style='background: rgba(138, 43, 226, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #8a2be2; min-height: 180px;'>
-            <h4 style='color: #8a2be2;'>🌐 Web Discovery</h4>
-            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
-                <strong>Capabilities:</strong><br>
-                • Directory enumeration (DIRB-style)<br>
-                • Subdomain discovery<br>
-                • API endpoint detection<br>
-                • Hidden resource identification
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
     
     with col5:
-        if st.button("📦 Packet Capture", key="btn_packet", use_container_width=True):
+        if st.button("📦 Packet Capture", key="btn_packet_card", use_container_width=True, help="Click to open Packet Capture module"):
             st.session_state.selected_module = "📦 Packet Capture"
             st.rerun()
-        st.markdown("""
-        <div style='background: rgba(255, 20, 147, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff1493; min-height: 180px;'>
-            <h4 style='color: #ff1493;'>📦 Packet Capture</h4>
-            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
-                <strong>Capabilities:</strong><br>
-                • Real-time traffic capture<br>
-                • Protocol analysis (HTTP/DNS/TCP)<br>
-                • Save .pcap files<br>
-                • Network traffic visualization
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
     
     with col6:
-        if st.button("📊 Reports & Logs", key="btn_logs", use_container_width=True):
+        if st.button("📊 Reports & Logs", key="btn_logs_card", use_container_width=True, help="Click to open Reports & Logs module"):
             st.session_state.selected_module = "📊 Logs & Reports"
             st.rerun()
-        st.markdown("""
-        <div style='background: rgba(255, 69, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff4500; min-height: 180px;'>
-            <h4 style='color: #ff4500;'>📊 Reports & Logs</h4>
-            <p style='color: #ccc; font-size: 0.9rem; line-height: 1.5;'>
-                <strong>Capabilities:</strong><br>
-                • View all security logs<br>
-                • SHA-256 integrity verification<br>
-                • Export PDF/Word/JSON reports<br>
-                • Comprehensive findings summary
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
