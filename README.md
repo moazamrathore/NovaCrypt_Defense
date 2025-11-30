@@ -125,7 +125,7 @@ NovaCrypt-Defense/
 ├── identity.txt          # Team identity verification
 ├── consent.txt           # Approved testing targets
 ├── evidence/             # Generated logs and reports
-│   └── security_logs.log
+│   └── report and demo video
 ├── README.md             # Project documentation
 └── .gitignore           # Git ignore rules
 ```
@@ -255,9 +255,8 @@ For questions or feedback regarding this project:
 
 ## 🔗 Links
 
-- 🌐 **Live Demo:** [Streamlit Cloud URL]
-- 📹 **Demo Video:** [YouTube/Drive Link]
-- 📊 **Presentation Slides:** [Link to slides]
+- 🌐 **Live Demo:** (https://novacryptdefense-cb5gkgwkjxyue8u7mspp8d.streamlit.app/)
+- 📹 **Github Repository:** (https://github.com/moazamrathore/NovaCrypt_Defense)
 
 ---
 
