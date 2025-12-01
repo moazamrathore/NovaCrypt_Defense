@@ -2255,6 +2255,7 @@ def show_web_discovery(logger, dry_run):
             # Validate target
             if not dry_run:
                 approved_domains = [
+                    "scanme.nmap.org",
                     "testphp.vulnweb.com",
                     "demo.testfire.net",
                     "localhost",
@@ -4077,3 +4078,4 @@ def show_logs_reports(logger):
 # ============================================================================
 if __name__ == "__main__":
     main()
+
